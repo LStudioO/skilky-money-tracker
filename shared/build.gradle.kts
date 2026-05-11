@@ -1,0 +1,26 @@
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidKotlinMultiplatformLibrary)
+}
+
+kotlin {
+    android {
+        namespace = "com.vstorchevyi.skilky.shared"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+    
+    iosArm64()
+    iosSimulatorArm64()
+    
+    jvm()
+    
+    sourceSets {
+        commonMain.dependencies {
+            // put your Multiplatform dependencies here
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
+    }
+}
