@@ -1,5 +1,7 @@
 # Skilky
 
+[![Build](https://github.com/LStudioO/skilky-money-tracker/actions/workflows/build.yml/badge.svg)](https://github.com/LStudioO/skilky-money-tracker/actions/workflows/build.yml)
+
 Skilky is a budget tracker for people who will not open a spreadsheet. You log spending the lazy way: type a line (`milk 45, bread 22`), say it, or snap a receipt. A local model figures out amounts and categories; you glance at a preview, tap confirm, and move on.
 
 **Status:** Product spec and roadmap live under [`docs/`](docs/). The app code is still mostly skeleton work.
