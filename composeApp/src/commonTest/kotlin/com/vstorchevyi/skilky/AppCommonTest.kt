@@ -3,9 +3,9 @@ package com.vstorchevyi.skilky
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class SharedCommonTest {
+class AppCommonTest {
     @Test
-    fun example() {
-        assertEquals(3, 1 + 2)
+    fun stub() {
+        assertEquals(expected = 3, actual = 1 + 2)
     }
 }

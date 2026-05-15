@@ -3,8 +3,9 @@ package com.vstorchevyi.skilky.api
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ApiErrorResponse(val error: ErrorDetail) {
-
+data class ApiErrorResponse(
+    val error: ErrorDetail,
+) {
     @Serializable
     data class ErrorDetail(
         val code: String,

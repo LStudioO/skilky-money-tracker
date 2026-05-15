@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.skilky.androidApp)
     alias(libs.plugins.composeCompiler)
 }
 
@@ -37,4 +37,5 @@ dependencies {
     implementation(projects.composeApp)
     implementation(libs.androidx.activity.compose)
     debugImplementation(libs.compose.uiTooling)
+    testImplementation(libs.kotlin.testJunit)
 }

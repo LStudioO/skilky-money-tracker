@@ -1,0 +1,19 @@
+style:
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: true
+  ReturnCount:
+    max: 3
+
+complexity:
+  TooManyFunctions:
+    allowedFunctionsPerClass: 20
+    allowedFunctionsPerFile: 20
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated:
+      - 'androidx.compose.runtime.Composable'
+  MatchingDeclarationName:
+    active: false
