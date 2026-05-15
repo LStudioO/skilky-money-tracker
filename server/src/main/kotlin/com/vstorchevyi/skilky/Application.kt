@@ -1,20 +1,19 @@
 package com.vstorchevyi.skilky
 
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-
-fun main() {
-    embeddedServer(Netty, port = SERVER_PORT, host = "0.0.0.0", module = Application::module)
-        .start(wait = true)
-}
+import com.vstorchevyi.skilky.config.AppConfig
+import com.vstorchevyi.skilky.plugins.configureCallLogging
+import com.vstorchevyi.skilky.plugins.configureCors
+import com.vstorchevyi.skilky.plugins.configureRouting
+import com.vstorchevyi.skilky.plugins.configureSerialization
+import com.vstorchevyi.skilky.plugins.configureStatusPages
+import io.ktor.server.application.Application
 
 fun Application.module() {
-    routing {
-        get("/") {
-            call.respondText("Ktor: ${Greeting().greet()}")
-        }
-    }
+    val appConfig = AppConfig.from(environment.config)
+
+    configureCallLogging()
+    configureSerialization()
+    configureStatusPages()
+    configureCors(appConfig)
+    configureRouting(appConfig)
 }
