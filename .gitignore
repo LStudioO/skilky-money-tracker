@@ -24,3 +24,6 @@ node_modules/
 
 # JetBrains HTTP Client — private env file holds secrets (tokens, passwords)
 requests/http-client.private.env.json
+
+# Docker Compose local env — may contain real passwords
+docker/.env

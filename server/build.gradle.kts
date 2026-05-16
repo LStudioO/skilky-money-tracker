@@ -26,6 +26,12 @@ dependencies {
     implementation(libs.ktor.serverCallLogging)
     implementation(libs.ktor.serverCors)
 
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.jdbc)
+    implementation(libs.exposed.kotlinDatetime)
+    implementation(libs.hikari)
+    implementation(libs.postgresql)
+
     implementation(libs.logback)
 
     testImplementation(libs.ktor.serverTestHost)
