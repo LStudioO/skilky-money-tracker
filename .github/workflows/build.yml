@@ -22,9 +22,9 @@ jobs:
         with:
           filters: |
             ios:
-              - 'composeApp/**'
-              - 'shared/**'
-              - 'iosApp/**'
+              - 'app/shared/**'
+              - 'core/**'
+              - 'app/iosApp/**'
               - 'gradle/**'
               - 'build-logic/**'
               - 'settings.gradle.kts'
@@ -55,8 +55,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-      - name: Run shared + composeApp JVM tests
-        run: ./gradlew :shared:jvmTest :composeApp:jvmTest --stacktrace
+      - name: Run core + app:shared JVM tests
+        run: ./gradlew :core:jvmTest :app:shared:jvmTest --stacktrace
       - name: Publish JVM test report
         if: always()
         uses: mikepenz/action-junit-report@v6
@@ -115,19 +115,19 @@ jobs:
       - uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v6
       - name: Assemble debug APK + run unit tests
-        run: ./gradlew :androidApp:assembleDebug :androidApp:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:androidApp:assembleDebug :app:androidApp:testDebugUnitTest --stacktrace
       - name: Publish Android test report
         if: always()
         uses: mikepenz/action-junit-report@v6
         with:
           check_name: Android tests report
-          report_paths: 'androidApp/build/test-results/**/TEST-*.xml'
+          report_paths: 'app/androidApp/build/test-results/**/TEST-*.xml'
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v7
         with:
           name: androidApp-debug-apk
-          path: androidApp/build/outputs/apk/debug/*.apk
+          path: app/androidApp/build/outputs/apk/debug/*.apk
           if-no-files-found: ignore
           retention-days: 7
 
@@ -152,4 +152,4 @@ jobs:
           restore-keys: konan-${{ runner.os }}-
       - uses: gradle/actions/setup-gradle@v6
       - name: Link iOS Simulator framework
-        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+        run: ./gradlew :app:shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace

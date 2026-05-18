@@ -36,7 +36,7 @@ application {
 }
 
 dependencies {
-    implementation(projects.shared)
+    implementation(projects.core)
 
     implementation(libs.ktor.serverCore)
     implementation(libs.ktor.serverNetty)

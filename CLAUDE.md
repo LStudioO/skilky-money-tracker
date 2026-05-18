@@ -15,13 +15,17 @@ Big-picture decisions, schemas, and the roadmap live in [`docs/`](docs/). Look h
 
 ## Module map
 
+Follows the [recommended KMP structure](https://kotlinlang.org/docs/multiplatform/multiplatform-project-recommended-structure.html) for projects with a server: `core` + `server` at the repo root, client code under `app/`.
+
 | Module | What it is |
 |---|---|
-| `:server` | Ktor backend, JVM only. See [`server/CLAUDE.md`](server/CLAUDE.md) for conventions. |
-| `:shared` | KMP module holding the API contract: DTOs, route constants, shared validation. Imported by both `:server` and `:composeApp`. Pure Kotlin in `commonMain`. Uses `kotlinx-serialization` and `kotlinx-datetime` only. |
-| `:composeApp` | Compose Multiplatform UI library. Targets Android, iOS, JVM desktop. Most app code lives here. |
-| `:androidApp` | Thin Android app entry point. Hosts `App()` from `:composeApp`. Almost no logic. |
-| `:build-logic` | Class-based Gradle convention plugins (`skilky.kotlin-jvm`, `skilky.kotlin-multiplatform`, `skilky.android-app`, `skilky.detekt`, `skilky.spotless`). Plugins live under `com.vstorchevyi.skilky.gradle`. |
+| `:core` | KMP library: API contract (DTOs, routes, validation). Used by `:server` and `:app:shared`. |
+| `:server` | Ktor backend, JVM only. See [`server/CLAUDE.md`](server/CLAUDE.md). |
+| `:app:shared` | Compose Multiplatform UI + iOS framework. Most client code lives here. |
+| `:app:androidApp` | Android application entry point. |
+| `:app:desktopApp` | Desktop entry point; use for Compose Hot Reload while editing shared UI. |
+| `app/iosApp/` | Xcode host for iOS (not a Gradle module). |
+| `:build-logic` | Convention plugins (`skilky.kotlin-jvm`, `skilky.kotlin-multiplatform`, `skilky.android-app`, `skilky.detekt`, `skilky.spotless`). |
 
 ## Working in this repo
 

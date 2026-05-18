@@ -15,7 +15,7 @@ src/main/kotlin/com/vstorchevyi/skilky/
     └── tables/                    # Exposed Table objects
 ```
 
-DTOs do not live here. They live in `:shared/.../api/` so the client can import them. Server-only response shapes are a rare exception.
+DTOs do not live here. They live in `:core/.../api/` so the client can import them. Server-only response shapes are a rare exception.
 
 ## Exposed 1.x conventions
 

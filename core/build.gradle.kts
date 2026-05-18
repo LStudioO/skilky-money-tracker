@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "com.vstorchevyi.skilky.shared"
+        namespace = "com.vstorchevyi.skilky.core"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }

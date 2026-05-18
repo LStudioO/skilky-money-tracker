@@ -4,26 +4,26 @@
 
 ```mermaid
 graph TB
-    subgraph "Client Devices"
-        A[Android App<br/>Compose Multiplatform]
-        I[iOS App<br/>Compose Multiplatform]
+    subgraph Clients
+        A[Android App]
+        I[iOS App]
     end
 
-    subgraph "Docker Compose"
-        subgraph "Backend"
-            K[Ktor Server<br/>:8080]
+    subgraph Docker
+        subgraph Backend
+            K[Ktor Server]
         end
-        subgraph "Database"
-            P[(PostgreSQL<br/>:5432)]
+        subgraph Database
+            P[(PostgreSQL)]
         end
-        subgraph "AI Services"
-            O[Ollama<br/>:11434<br/>Text + Vision LLM]
-            W[Speaches/Whisper<br/>:8000<br/>Speech-to-Text]
+        subgraph AI
+            O[Ollama]
+            W[Whisper]
         end
     end
 
-    A -- HTTPS/REST --> K
-    I -- HTTPS/REST --> K
+    A -- HTTPS --> K
+    I -- HTTPS --> K
     K -- JDBC --> P
     K -- HTTP --> O
     K -- HTTP --> W
@@ -41,11 +41,13 @@ graph TB
 ```
 skilky-money-tracker/
 ├── build-logic/                    # Convention plugins (composite build)
-├── shared/
-│   ├── models/                     # :shared:models — DTOs, enums, API routes, validation
-│   └── core/                       # :shared:core — currency formatting, date utils, AppResult
-├── composeApp/                     # :composeApp — CMP app (Android + iOS)
+├── core/                           # :core — DTOs, enums, API routes, validation (client + server)
 ├── server/                         # :server — Ktor backend
+├── app/
+│   ├── shared/                     # :app:shared — CMP UI (Android library + iOS framework)
+│   ├── androidApp/                 # :app:androidApp — Android application
+│   ├── desktopApp/                 # :app:desktopApp — Desktop (Hot Reload sandbox)
+│   └── iosApp/                     # Xcode iOS host (not a Gradle module)
 ├── docker/                         # Docker Compose + .env
 ├── gradle/libs.versions.toml       # Version catalog
 ├── .github/workflows/              # CI/CD
@@ -56,19 +58,22 @@ skilky-money-tracker/
 
 ```mermaid
 graph LR
-    CA[":composeApp<br/>(Android + iOS)"]
-    S[":server<br/>(Ktor)"]
-    SC[":shared:core<br/>(Business Logic)"]
-    SM[":shared:models<br/>(DTOs, Enums, Routes)"]
+    AS[app:shared]
+    AA[app:androidApp]
+    AD[app:desktopApp]
+    S[server]
+    C[core]
 
-    CA --> SC
-    S --> SC
-    SC --> SM
+    AA --> AS
+    AD --> AS
+    AS --> C
+    S --> C
 
-    style CA fill:#4CAF50,color:#fff
+    style AS fill:#4CAF50,color:#fff
+    style AA fill:#4CAF50,color:#fff
+    style AD fill:#4CAF50,color:#fff
     style S fill:#FF9800,color:#fff
-    style SC fill:#2196F3,color:#fff
-    style SM fill:#9C27B0,color:#fff
+    style C fill:#9C27B0,color:#fff
 ```
 
 ### Module Details
@@ -107,11 +112,11 @@ Every screen follows unidirectional data flow: **Intent → ViewModel → State 
 
 ```mermaid
 flowchart LR
-    UI[Screen<br/>Composable] -->|user action| INTENT[Intent]
+    UI[Screen] -->|user action| INTENT[Intent]
     INTENT --> VM[ViewModel]
-    VM -->|new state| STATE[State<br/>data class]
+    VM -->|new state| STATE[State]
     STATE --> UI
-    VM -->|one-shot| EFFECT[SideEffect<br/>nav, snackbar]
+    VM -->|one-shot| EFFECT[SideEffect]
     EFFECT --> UI
 ```
 
@@ -153,12 +158,12 @@ composeApp/src/commonMain/kotlin/dev/skilky/tracker/app/
 
 ```mermaid
 flowchart TD
-    UI[UI Layer<br/>Screens + ViewModels]
-    REPO[Repository Layer]
-    ROOM[(Room DB<br/>Expenses + Categories)]
-    API[Remote API<br/>Ktor Client]
+    UI[UI Layer]
+    REPO[Repository]
+    ROOM[(Room DB)]
+    API[Remote API]
     SYNC[Sync Manager]
-    QUEUE[(Input Queue<br/>Raw text/audio/image)]
+    QUEUE[(Input Queue)]
     NET{Online?}
 
     UI -->|intent| REPO
@@ -247,12 +252,12 @@ The server talks to Ollama and Whisper via HTTP (sibling Docker containers).
 ```mermaid
 flowchart LR
     CLIENT[Mobile App] --> KTOR[Ktor Server]
-    KTOR --> |"Text parsing<br/>POST /api/chat"| OLLAMA[Ollama<br/>llama3.2]
-    KTOR --> |"Receipt vision<br/>POST /api/chat"| OLLAMA_V[Ollama<br/>LLaVA]
-    KTOR --> |"Speech-to-text<br/>POST /v1/audio/transcriptions"| WHISPER[Speaches<br/>Whisper]
+    KTOR -->|text| OLLAMA[Ollama llama3.2]
+    KTOR -->|image| OLLAMA_V[Ollama LLaVA]
+    KTOR -->|audio| WHISPER[Whisper]
 
-    WHISPER --> |transcript| KTOR
-    KTOR --> |parsed text| OLLAMA
+    WHISPER -->|transcript| KTOR
+    KTOR -->|parsed text| OLLAMA
 ```
 
 **AiParsingService interface:**
@@ -347,21 +352,21 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    START((User opens app))
+    START((Start))
     INPUT[Quick Entry Bar]
-    TEXT[Types text<br/>"milk 45, bread 22"]
-    MIC[Taps mic<br/>Records audio]
-    CAM[Taps camera<br/>Takes photo]
+    TEXT[Type text]
+    MIC[Mic]
+    CAM[Camera]
 
     SEND[Send to Backend]
     WHISPER[Whisper STT]
-    OLLAMA_T[Ollama<br/>Text → JSON]
-    OLLAMA_V[Ollama<br/>Image → JSON]
+    OLLAMA_T[Ollama text]
+    OLLAMA_V[Ollama vision]
 
-    PREVIEW[Preview Sheet<br/>Parsed items]
-    EDIT[User edits<br/>name/amount/category]
+    PREVIEW[Preview Sheet]
+    EDIT[Edit items]
     CONFIRM[Confirm]
-    SAVE[Save to Room + Sync]
+    SAVE[Save + Sync]
 
     START --> INPUT
     INPUT --> TEXT
@@ -391,17 +396,17 @@ graph TB
     subgraph "Host Machine"
         DC[docker-compose.yml]
 
-        subgraph "Docker Network: skilky-net"
-            BE["skilky-backend<br/>:8080<br/>(Ktor + JRE 21)"]
-            PG["skilky-postgres<br/>:5432<br/>(PostgreSQL 17)"]
-            OL["skilky-ollama<br/>:11434<br/>(Ollama)"]
-            WH["skilky-whisper<br/>:8000<br/>(Speaches)"]
+        subgraph Network
+            BE[Ktor Backend]
+            PG[(PostgreSQL)]
+            OL[Ollama]
+            WH[Whisper]
         end
 
-        subgraph "Persistent Volumes"
+        subgraph Volumes
             V1[postgres-data]
-            V2[ollama-data<br/>Downloaded models]
-            V3[whisper-cache<br/>HuggingFace models]
+            V2[ollama-data]
+            V3[whisper-cache]
         end
     end
 
@@ -414,9 +419,9 @@ graph TB
     OL --> V2
     WH --> V3
 
-    BE -- "JDBC" --> PG
-    BE -- "HTTP /api/chat" --> OL
-    BE -- "HTTP /v1/audio/transcriptions" --> WH
+    BE -- JDBC --> PG
+    BE -- HTTP --> OL
+    BE -- HTTP --> WH
 
-    INTERNET((Internet)) -- ":8080" --> BE
+    INTERNET((Internet)) -- 8080 --> BE
 ```
