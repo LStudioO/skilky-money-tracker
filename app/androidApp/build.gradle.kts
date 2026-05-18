@@ -34,7 +34,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.composeApp)
+    implementation(projects.app.shared)
     implementation(libs.androidx.activity.compose)
     debugImplementation(libs.compose.uiTooling)
     testImplementation(libs.kotlin.testJunit)

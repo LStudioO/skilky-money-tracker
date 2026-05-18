@@ -6,17 +6,31 @@ Skilky is a budget tracker for people who will not open a spreadsheet. You log s
 
 **Status:** Product spec and roadmap live under [`docs/`](docs/). The app code is still mostly skeleton work.
 
+## Project layout
+
+```
+core/              # DTOs and API contract (client + server)
+server/            # Ktor backend
+app/
+  shared/          # Compose Multiplatform UI (Android library + iOS framework)
+  androidApp/      # Android application
+  desktopApp/      # Desktop app (Compose Hot Reload sandbox for shared UI)
+  iosApp/          # Xcode iOS host
+```
+
 ## Running builds
 
 You need a normal JDK, Android Studio for Android work, and Xcode for iOS.
 
 ```bash
-./gradlew :androidApp:assembleDebug   # Android
-./gradlew :composeApp:run             # Desktop
-./gradlew :server:run                 # Ktor server
+./gradlew :app:androidApp:assembleDebug   # Android
+./gradlew :app:desktopApp:run             # Desktop (Compose Hot Reload)
+./gradlew :server:run                     # Ktor server
 ```
 
-iOS: open the `iosApp` folder in Xcode, run the iosApp target.
+iOS: open `app/iosApp` in Xcode, run the iosApp target.
+
+For live UI edits in shared Compose code, run the desktop app with **Compose Hot Reload** from the IDE (see [Compose Hot Reload](https://kotlinlang.org/docs/multiplatform/compose-hot-reload.html)).
 
 On Windows use `gradlew.bat` instead of `./gradlew`.
 
