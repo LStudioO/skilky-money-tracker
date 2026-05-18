@@ -1,0 +1,24 @@
+# Normalize all text files to LF in the repo and working tree.
+# Without this, contributors with `core.autocrlf=true` (Git for Windows
+# default, sometimes inherited on macOS too) end up with CRLF in the
+# working tree, and Spotless rewrites them as LF, which shows up as
+# spurious "modified" entries in `git status`.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Binary assets: skip line-ending normalization.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.ico       binary
+*.pdf       binary
+*.jar       binary
+*.apk       binary
+*.aab       binary
+*.ipa       binary
+*.keystore  binary
