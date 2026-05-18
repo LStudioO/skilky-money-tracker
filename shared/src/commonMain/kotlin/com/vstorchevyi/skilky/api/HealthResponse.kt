@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class HealthResponse(
     val status: String,
     val version: String,
+    val db: String? = null,
 )

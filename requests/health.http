@@ -11,6 +11,20 @@ Accept: application/json
     });
 %}
 
+### DB health check — should return 200 with {"status":"ok","version":"1.0.0","db":"connected"} if Postgres is up
+GET {{baseUrl}}/api/{{apiVersion}}/health/db
+Accept: application/json
+
+> {%
+    client.test("status is 200 or 503", function() {
+        client.assert(response.status === 200 || response.status === 503,
+            "Expected 200 or 503 but got " + response.status);
+    });
+    client.test("body has db field", function() {
+        client.assert(response.body.db !== undefined, "Expected response.body.db to be set");
+    });
+%}
+
 ### Unknown route — should return 404 with our error envelope
 GET {{baseUrl}}/api/{{apiVersion}}/does-not-exist
 Accept: application/json

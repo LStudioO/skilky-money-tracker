@@ -4,6 +4,7 @@ object ApiRoutes {
     const val BASE = "/api/v1"
 
     const val HEALTH = "$BASE/health"
+    const val HEALTH_DB = "$BASE/health/db"
 
     object Auth {
         const val REGISTER = "$BASE/auth/register"

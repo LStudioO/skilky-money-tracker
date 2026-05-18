@@ -6,6 +6,7 @@ dependencies {
     implementation(libs.android.gradlePlugin)
     implementation(libs.detekt.gradlePlugin)
     implementation(libs.kotlin.gradlePlugin)
+    implementation(libs.kover.gradlePlugin)
     implementation(libs.spotless.gradlePlugin)
 }
 
@@ -30,6 +31,10 @@ gradlePlugin {
         register("androidApp") {
             id = "skilky.android-app"
             implementationClass = "com.vstorchevyi.skilky.gradle.AndroidAppConventionPlugin"
+        }
+        register("kover") {
+            id = "skilky.kover"
+            implementationClass = "com.vstorchevyi.skilky.gradle.KoverConventionPlugin"
         }
     }
 }

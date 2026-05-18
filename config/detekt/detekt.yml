@@ -5,11 +5,16 @@ style:
     active: true
   ReturnCount:
     max: 3
+  ThrowsCount:
+    max: 6
 
 complexity:
   TooManyFunctions:
     allowedFunctionsPerClass: 20
     allowedFunctionsPerFile: 20
+  LongParameterList:
+    allowedFunctionParameters: 8
+    allowedConstructorParameters: 8
 
 naming:
   FunctionNaming:

@@ -10,6 +10,7 @@ class KotlinMultiplatformConventionPlugin : Plugin<Project> {
                 apply("org.jetbrains.kotlin.multiplatform")
                 apply("skilky.detekt")
                 apply("skilky.spotless")
+                apply("skilky.kover")
             }
         }
 }

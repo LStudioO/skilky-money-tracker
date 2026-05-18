@@ -57,6 +57,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Run shared + composeApp JVM tests
         run: ./gradlew :shared:jvmTest :composeApp:jvmTest --stacktrace
+      - name: Publish JVM test report
+        if: always()
+        uses: mikepenz/action-junit-report@v6
+        with:
+          check_name: JVM tests report
+          report_paths: '**/build/test-results/**/TEST-*.xml'
 
   build-server:
     name: Server
@@ -69,8 +75,24 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-      - name: Build server + run server tests
-        run: ./gradlew :server:build --stacktrace
+      - name: Build server + run server tests + coverage
+        run: ./gradlew :server:build :server:koverXmlReport --stacktrace
+      - name: Publish server test report
+        if: always()
+        uses: mikepenz/action-junit-report@v6
+        with:
+          check_name: Server tests report
+          report_paths: 'server/build/test-results/**/TEST-*.xml'
+      - name: Comment server coverage on PR
+        if: always() && github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.7.2
+        with:
+          paths: server/build/reports/kover/report.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Server coverage
+          min-coverage-overall: 0
+          min-coverage-changed-files: 0
+          update-comment: true
       - name: Upload server JAR
         if: success()
         uses: actions/upload-artifact@v7
@@ -94,6 +116,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Assemble debug APK + run unit tests
         run: ./gradlew :androidApp:assembleDebug :androidApp:testDebugUnitTest --stacktrace
+      - name: Publish Android test report
+        if: always()
+        uses: mikepenz/action-junit-report@v6
+        with:
+          check_name: Android tests report
+          report_paths: 'androidApp/build/test-results/**/TEST-*.xml'
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v7

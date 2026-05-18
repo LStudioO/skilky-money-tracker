@@ -1,0 +1,106 @@
+### Register a new user
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "vlad@example.com",
+  "password": "secret123",
+  "displayName": "Vlad"
+}
+
+> {%
+    client.test("status is 201", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.test("has access token", function() {
+        client.assert(response.body.token, "Expected response.body.token");
+    });
+    client.global.set("authToken", response.body.token);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Login with the same credentials
+POST {{baseUrl}}/api/{{apiVersion}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "vlad@example.com",
+  "password": "secret123"
+}
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.global.set("authToken", response.body.token);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Refresh the access token
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh
+Content-Type: application/json
+Accept: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.global.set("authToken", response.body.token);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Register with invalid email — should 422
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "not-an-email",
+  "password": "secret123",
+  "displayName": "Test"
+}
+
+> {%
+    client.test("status is 422", function() {
+        client.assert(response.status === 422, "Expected 422 but got " + response.status);
+    });
+%}
+
+### Register duplicate — should 409
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "vlad@example.com",
+  "password": "secret123",
+  "displayName": "Vlad"
+}
+
+> {%
+    client.test("status is 409", function() {
+        client.assert(response.status === 409, "Expected 409 but got " + response.status);
+    });
+%}
+
+### Login with wrong password — should 401
+POST {{baseUrl}}/api/{{apiVersion}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "vlad@example.com",
+  "password": "wrongpass1"
+}
+
+> {%
+    client.test("status is 401", function() {
+        client.assert(response.status === 401, "Expected 401 but got " + response.status);
+    });
+%}
