@@ -8,9 +8,10 @@ import org.gradle.kotlin.dsl.configure
 /**
  * Coverage with Kover. Reports surface at `<module>/build/reports/kover/`.
  *
- * No verification threshold is configured here on purpose: coverage in
- * this project is a visibility tool, not a quality gate. Threshold gates
- * encourage tests that hit numbers without testing intent.
+ * Each module enforces a 1% line-coverage floor via `koverVerify`. This is
+ * a low bar on purpose: it catches "tests don't run at all" without
+ * encouraging tests that hit numbers without testing intent. Bump the
+ * floor per-module here as confidence grows.
  *
  * Module-specific exclusions (boot wiring, Exposed Table singletons, DTOs)
  * belong in the consuming module's build script, not here.
@@ -32,6 +33,11 @@ class KoverConventionPlugin : Plugin<Project> {
                                 "*\$\$serializer", // kotlinx-serialization codegen
                                 "*ComposableSingletons*", // Compose codegen
                             )
+                        }
+                    }
+                    verify {
+                        rule {
+                            minBound(1)
                         }
                     }
                 }
