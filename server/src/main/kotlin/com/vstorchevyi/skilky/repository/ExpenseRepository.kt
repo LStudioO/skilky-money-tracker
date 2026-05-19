@@ -125,24 +125,83 @@ class ExpenseRepository(
         items: List<ExpenseRequest>,
     ): List<ExpenseWithCategory> =
         databaseFactory.dbQuery {
-            items.map { req -> upsertExpenseItem(userId, req) }
+            if (items.isEmpty()) return@dbQuery emptyList()
+
+            // Pre-fetch every category referenced by this batch in a single
+            // query so the per-item path doesn't hit the DB once per row.
+            // Idempotency check is also bulk-fetched against the unique
+            // (user_id, client_id) index.
+            val itemsWithClientIds = items.map { it to it.clientId.trim() }
+            val clientIds = itemsWithClientIds.map { it.second }
+            val referencedCategoryIds = items.map { it.categoryId }.distinct()
+            val categoriesById = loadAccessibleCategories(userId, referencedCategoryIds)
+            val existingByClientId = loadExistingByClientId(userId, clientIds, categoriesById)
+
+            itemsWithClientIds.map { (req, clientId) ->
+                existingByClientId[clientId]?.let { return@map it }
+                val cat =
+                    categoriesById[req.categoryId]
+                        ?: throw ValidationException("Unknown category id ${req.categoryId}")
+                try {
+                    insertExpenseRow(userId, req, cat, clientId)
+                } catch (e: ExposedSQLException) {
+                    // A concurrent transaction may have inserted between our
+                    // pre-fetch and our INSERT; recover by reading the winner.
+                    if (e.sqlState != SQL_STATE_UNIQUE_VIOLATION) throw e
+                    findJoinedByClientId(userId, clientId) ?: throw e
+                }
+            }
         }
 
-    private fun upsertExpenseItem(
+    private fun loadAccessibleCategories(
         userId: Long,
-        req: ExpenseRequest,
-    ): ExpenseWithCategory {
-        val clientId = req.clientId.trim()
-        findJoinedByClientId(userId, clientId)?.let { return it }
-        val cat =
-            findAccessibleCategory(req.categoryId, userId)
-                ?: throw ValidationException("Unknown category id ${req.categoryId}")
-        return try {
-            insertExpenseRow(userId, req, cat, clientId)
-        } catch (e: ExposedSQLException) {
-            if (e.sqlState != SQL_STATE_UNIQUE_VIOLATION) throw e
-            findJoinedByClientId(userId, clientId) ?: throw e
-        }
+        categoryIds: List<Long>,
+    ): Map<Long, CategoryRecord> {
+        if (categoryIds.isEmpty()) return emptyMap()
+        return CategoriesTable
+            .selectAll()
+            .where {
+                (CategoriesTable.id inList categoryIds) and
+                    ((CategoriesTable.userId eq null) or (CategoriesTable.userId eq userId))
+            }.associate { it[CategoriesTable.id].value to it.toCategoryRecord() }
+    }
+
+    private fun loadExistingByClientId(
+        userId: Long,
+        clientIds: List<String>,
+        prefetchedCategories: Map<Long, CategoryRecord>,
+    ): Map<String, ExpenseWithCategory> {
+        if (clientIds.isEmpty()) return emptyMap()
+        val rows =
+            ExpensesTable
+                .selectAll()
+                .where {
+                    (ExpensesTable.userId eq userId) and (ExpensesTable.clientId inList clientIds)
+                }.toList()
+        if (rows.isEmpty()) return emptyMap()
+        // Existing rows may reference categories not in this batch (e.g. a
+        // sync retry whose original category isn't among the new ones).
+        // Fetch the gap in one extra query, never one-per-row.
+        val unknownCategoryIds =
+            rows
+                .map { it[ExpensesTable.categoryId].value }
+                .filter { it !in prefetchedCategories }
+                .distinct()
+        val extraCategories =
+            if (unknownCategoryIds.isEmpty()) {
+                emptyMap()
+            } else {
+                CategoriesTable
+                    .selectAll()
+                    .where { CategoriesTable.id inList unknownCategoryIds }
+                    .associate { it[CategoriesTable.id].value to it.toCategoryRecord() }
+            }
+        val resolved = prefetchedCategories + extraCategories
+        return rows.mapNotNull { row ->
+            val expense = row.toExpenseRecord()
+            val cat = resolved[expense.categoryId] ?: return@mapNotNull null
+            expense.clientId to ExpenseWithCategory(expense, cat)
+        }.toMap()
     }
 
     private fun findJoinedByClientId(
@@ -283,7 +342,9 @@ class ExpenseRepository(
     private fun amountOf(raw: Double): BigDecimal = BigDecimal.valueOf(raw).setScale(2, RoundingMode.HALF_UP)
 
     companion object {
-        private const val MAX_PAGE_SIZE = 100
+        /** Hard upper bound on `size=` query param. Routes clamp to this too. */
+        const val MAX_PAGE_SIZE = 100
+        const val DEFAULT_PAGE_SIZE = 50
         private const val SQL_STATE_UNIQUE_VIOLATION = "23505"
     }
 }

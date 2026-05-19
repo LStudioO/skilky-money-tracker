@@ -280,6 +280,192 @@ class ExpenseCategoryRoutesIntegrationTest {
             categories.first { it.nameKey == DefaultCategoryKeys.FOOD }.name shouldBe "Food"
         }
 
+    @Test
+    fun `GET categories without token returns 401`() =
+        runExpenseCategoryTest { sut ->
+            // Act
+            val response = sut.get(ApiRoutes.Categories.ROOT)
+
+            // Assert
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+
+    @Test
+    fun `POST expenses without token returns 401`() =
+        runExpenseCategoryTest { sut ->
+            // Act
+            val response =
+                sut.post(ApiRoutes.Expenses.ROOT) {
+                    contentType(ContentType.Application.Json)
+                    setBody(anExpenseBatchRequest())
+                }
+
+            // Assert
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+
+    @Test
+    fun `POST expenses with empty batch returns 422`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+
+            // Act
+            val response =
+                sut.postExpenses(auth.token, ExpenseBatchRequest(items = emptyList()))
+
+            // Assert
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+        }
+
+    @Test
+    fun `POST expenses with more than 100 items returns 422`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+            val foodId = sut.foodCategoryId(auth.token)
+            val oversize =
+                anExpenseBatchRequest(
+                    items =
+                        List(101) {
+                            anExpenseRequest(
+                                categoryId = foodId,
+                                clientId = UUID.randomUUID().toString(),
+                            )
+                        },
+                )
+
+            // Act
+            val response = sut.postExpenses(auth.token, oversize)
+
+            // Assert
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+        }
+
+    @Test
+    fun `POST expenses with non-UUID clientId returns 422`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+            val foodId = sut.foodCategoryId(auth.token)
+            val batch =
+                anExpenseBatchRequest(
+                    listOf(anExpenseRequest(categoryId = foodId, clientId = "not-a-uuid")),
+                )
+
+            // Act
+            val response = sut.postExpenses(auth.token, batch)
+
+            // Assert
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+        }
+
+    @Test
+    fun `GET expenses with malformed from date returns 422`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+
+            // Act
+            val response =
+                sut.get("${ApiRoutes.Expenses.ROOT}?from=garbage") {
+                    header(HttpHeaders.Authorization, "Bearer ${auth.token}")
+                }
+
+            // Assert
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+        }
+
+    @Test
+    fun `PUT expense on unknown id returns 404`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+            val foodId = sut.foodCategoryId(auth.token)
+            val body =
+                anExpenseRequest(
+                    categoryId = foodId,
+                    clientId = UUID.randomUUID().toString(),
+                )
+
+            // Act
+            val response = sut.putExpense(auth.token, id = 999_999, body = body)
+
+            // Assert
+            response.status shouldBe HttpStatusCode.NotFound
+        }
+
+    @Test
+    fun `DELETE expense on unknown id returns 404`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+
+            // Act
+            val response = sut.deleteExpense(auth.token, id = 999_999)
+
+            // Assert
+            response.status shouldBe HttpStatusCode.NotFound
+        }
+
+    @Test
+    fun `PUT expense belonging to another user returns 404`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange — owner creates an expense
+            val owner = sut.registerFreshUser()
+            val foodId = sut.foodCategoryId(owner.token)
+            val expenseId =
+                sut
+                    .postExpenses(
+                        owner.token,
+                        anExpenseBatchRequest(
+                            listOf(
+                                anExpenseRequest(
+                                    categoryId = foodId,
+                                    clientId = UUID.randomUUID().toString(),
+                                ),
+                            ),
+                        ),
+                    ).body<ExpenseListResponse>()
+                    .items
+                    .single()
+                    .id
+            // …a different user tries to mutate it.
+            val intruder = sut.registerFreshUser()
+            val intruderFood = sut.foodCategoryId(intruder.token)
+            val update =
+                anExpenseRequest(
+                    categoryId = intruderFood,
+                    clientId = UUID.randomUUID().toString(),
+                )
+
+            // Act
+            val response = sut.putExpense(intruder.token, expenseId, update)
+
+            // Assert: 404, not 403 — don't leak that the id exists in another tenant.
+            response.status shouldBe HttpStatusCode.NotFound
+        }
+
+    @Test
+    fun `DELETE custom category belonging to another user returns 404`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange — owner creates a custom category
+            val owner = sut.registerFreshUser()
+            val categoryId =
+                sut
+                    .postCategory(owner.token, aCreateCategoryRequest())
+                    .body<CategoryDto>()
+                    .id
+            // …intruder tries to delete it
+            val intruder = sut.registerFreshUser()
+
+            // Act
+            val response = sut.deleteCategory(intruder.token, categoryId)
+
+            // Assert: 404 (foreign tenant), not 403 (system).
+            response.status shouldBe HttpStatusCode.NotFound
+        }
+
     private fun runExpenseCategoryTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =
         testApplication {
             useTestConfigWithDb()

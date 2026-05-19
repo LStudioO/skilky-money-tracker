@@ -89,4 +89,11 @@ object DefaultCategoryTranslations {
         val perKey = byKey[nameKey] ?: return storedName
         return perKey[lang] ?: perKey["en"] ?: storedName
     }
+
+    /**
+     * English translation for [nameKey], or `null` if the key is absent.
+     * Used by server seeding to enforce that every default key carries an
+     * English string at boot.
+     */
+    fun englishOrNull(nameKey: String): String? = byKey[nameKey]?.get("en")
 }

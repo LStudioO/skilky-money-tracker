@@ -119,10 +119,16 @@ class DatabaseFactory(
                 .count()
         if (existing > 0L) return
         for (template in DefaultCategories.ALL) {
+            // Require the English translation explicitly. Falling through
+            // `displayName(..., storedName = "")` would silently write empty
+            // `name` cells if a key were ever added to DefaultCategoryKeys
+            // without a matching translation entry. Fail at boot instead.
+            val englishName =
+                DefaultCategoryTranslations.englishOrNull(template.key)
+                    ?: error("DefaultCategoryTranslations missing English entry for '${template.key}'")
             CategoriesTable.insert {
                 it[CategoriesTable.nameKey] = template.key
-                it[CategoriesTable.name] =
-                    DefaultCategoryTranslations.displayName(template.key, storedName = "", languageTag = "en")
+                it[CategoriesTable.name] = englishName
                 it[CategoriesTable.icon] = template.icon
                 it[CategoriesTable.color] = template.color
                 it[CategoriesTable.isDefault] = true

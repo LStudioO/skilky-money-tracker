@@ -24,8 +24,16 @@ fun CategoryRecord.toDto(languageTag: String): CategoryDto =
     )
 
 fun ExpenseWithCategory.toResponse(languageTag: String): ExpenseResponse {
-    val input = InputType.entries.firstOrNull { it.name == expense.inputType } ?: InputType.TEXT
-    val currency = Currency.fromCode(expense.currency) ?: Currency.UAH
+    // A row holding a value outside our enums means stored data has drifted
+    // from the application's contract — never expected, never papered over.
+    // Throwing lets StatusPages surface a 500 with the row id so the bad
+    // record is identifiable in logs rather than silently rewritten.
+    val input =
+        InputType.entries.firstOrNull { it.name == expense.inputType }
+            ?: error("Expense ${expense.id} has unknown inputType '${expense.inputType}'")
+    val currency =
+        Currency.fromCode(expense.currency)
+            ?: error("Expense ${expense.id} has unknown currency '${expense.currency}'")
     return ExpenseResponse(
         id = expense.id,
         name = expense.name,

@@ -69,7 +69,7 @@ private fun Route.categoryPut(categoryRepository: CategoryRepository) {
         val id =
             call.parameters["id"]?.toLongOrNull()
                 ?: throw NotFoundException("Invalid category id")
-        categoryRepository.requireOwnedMutableCategory(user.userId, id)
+        categoryRepository.requireOwnedCustomCategory(user.userId, id, action = "modify")
         val body = call.receive<UpdateCategoryRequest>()
         validateCreateCategory(body.name, body.icon, body.color)
         val updated =
@@ -90,7 +90,7 @@ private fun Route.categoryDelete(categoryRepository: CategoryRepository) {
         val id =
             call.parameters["id"]?.toLongOrNull()
                 ?: throw NotFoundException("Invalid category id")
-        categoryRepository.requireOwnedDeletableCategory(user.userId, id)
+        categoryRepository.requireOwnedCustomCategory(user.userId, id, action = "delete")
         if (!categoryRepository.deleteCustomIfOwned(user.userId, id)) {
             throw NotFoundException("Category not found")
         }
@@ -98,27 +98,20 @@ private fun Route.categoryDelete(categoryRepository: CategoryRepository) {
     }
 }
 
-private suspend fun CategoryRepository.requireOwnedMutableCategory(
+/**
+ * Confirms the category exists, is custom, and belongs to [userId].
+ * Throws [ForbiddenException] for system defaults so the API surfaces a
+ * clear reason (the id is visible to every user), and [NotFoundException]
+ * for foreign rows so cross-tenant existence isn't leaked.
+ */
+private suspend fun CategoryRepository.requireOwnedCustomCategory(
     userId: Long,
     categoryId: Long,
+    action: String,
 ): CategoryRecord {
     val existing = findById(categoryId) ?: throw NotFoundException("Category not found")
     if (existing.ownerUserId == null) {
-        throw ForbiddenException("Cannot modify system default category")
-    }
-    if (existing.ownerUserId != userId) {
-        throw NotFoundException("Category not found")
-    }
-    return existing
-}
-
-private suspend fun CategoryRepository.requireOwnedDeletableCategory(
-    userId: Long,
-    categoryId: Long,
-): CategoryRecord {
-    val existing = findById(categoryId) ?: throw NotFoundException("Category not found")
-    if (existing.ownerUserId == null) {
-        throw ForbiddenException("Cannot delete system default category")
+        throw ForbiddenException("Cannot $action system default category")
     }
     if (existing.ownerUserId != userId) {
         throw NotFoundException("Category not found")

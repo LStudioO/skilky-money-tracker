@@ -6,6 +6,8 @@ import com.vstorchevyi.skilky.api.ExpenseListResponse
 import com.vstorchevyi.skilky.api.ExpenseRequest
 import com.vstorchevyi.skilky.plugins.jwtAuthName
 import com.vstorchevyi.skilky.repository.ExpenseRepository
+import com.vstorchevyi.skilky.repository.ExpenseRepository.Companion.DEFAULT_PAGE_SIZE
+import com.vstorchevyi.skilky.repository.ExpenseRepository.Companion.MAX_PAGE_SIZE
 import com.vstorchevyi.skilky.security.parseLocalDateOrThrow
 import com.vstorchevyi.skilky.security.validateExpenseBatch
 import com.vstorchevyi.skilky.security.validateExpenseRequest
@@ -49,7 +51,9 @@ private fun Route.expenseGetList(expenseRepository: ExpenseRepository) {
         val to = parseLocalDateOrThrow(call.request.queryParameters["to"], "to")
         val categoryId = call.request.queryParameters["categoryId"]?.toLongOrNull()
         val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 0
-        val pageSize = (call.request.queryParameters["size"]?.toIntOrNull() ?: 50).coerceIn(1, 100)
+        val pageSize =
+            (call.request.queryParameters["size"]?.toIntOrNull() ?: DEFAULT_PAGE_SIZE)
+                .coerceIn(1, MAX_PAGE_SIZE)
         val (items, total) =
             expenseRepository.list(
                 userId = user.userId,
