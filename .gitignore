@@ -19,8 +19,10 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 
-# Local agent / AI tooling settings (machine-specific)
-.claude/
+# Local agent / AI tooling settings (machine-specific). Skills are
+# project-shared and committed — everything else stays local.
+.claude/*
+!.claude/skills/
 
 # JetBrains HTTP Client — private env file holds secrets (tokens, passwords)
 requests/http-client.private.env.json
