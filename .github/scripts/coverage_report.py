@@ -74,14 +74,19 @@ def color(pct: float) -> str:
     return "red"
 
 
-def write_badge(total: Coverage, out: Path) -> None:
+def write_badge(label: str, cov: Coverage, out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "schemaVersion": 1,
-        "label": "coverage",
-        "message": f"{total.pct:.1f}%",
-        "color": color(total.pct),
+        "label": label,
+        "message": f"{cov.pct:.1f}%",
+        "color": color(cov.pct),
     }))
+
+
+def module_slug(name: str) -> str:
+    # `:app:shared` -> `app-shared`; `:core` -> `core`.
+    return name.lstrip(":").replace(":", "-")
 
 
 def write_comment(per_module: list[tuple[str, Coverage]], total: Coverage | None, out: Path) -> None:
@@ -118,7 +123,10 @@ def main() -> int:
         print(f"error: aggregated report {AGGREGATED} not found", file=sys.stderr)
         return 1
 
-    write_badge(total, Path("build/reports/kover/html/badge.json"))
+    out_dir = Path("build/reports/kover/html")
+    write_badge("coverage", total, out_dir / "badge.json")
+    for name, cov in per_module:
+        write_badge(name, cov, out_dir / f"badge-{module_slug(name)}.json")
     write_comment(per_module, total, Path("build/reports/kover/comment.md"))
 
     print(f"coverage={total.pct:.1f}% ({total.covered}/{total.total} lines)")
