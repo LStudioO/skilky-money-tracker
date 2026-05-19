@@ -1,14 +1,21 @@
 package com.vstorchevyi.skilky.db
 
+import com.vstorchevyi.skilky.api.DefaultCategories
+import com.vstorchevyi.skilky.api.DefaultCategoryTranslations
 import com.vstorchevyi.skilky.config.AppConfig
+import com.vstorchevyi.skilky.db.tables.CategoriesTable
+import com.vstorchevyi.skilky.db.tables.ExpensesTable
 import com.vstorchevyi.skilky.db.tables.RefreshTokensTable
 import com.vstorchevyi.skilky.db.tables.UsersTable
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.inTopLevelSuspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
@@ -28,6 +35,10 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
  * Idempotent for new tables, but does NOT add columns to existing tables.
  * Migrations (Flyway / Liquibase) come later, once we have to ship schema
  * changes against existing production data.
+ *
+ * **Default categories.** [seedSystemCategoriesIfEmpty] runs once per empty install: inserts
+ * [DefaultCategories] with `user_id` null and English `name` as a DBA-friendly fallback; API copy
+ * still localizes via [DefaultCategoryTranslations] using `name_key`.
  */
 class DatabaseFactory(
     private val config: AppConfig.DatabaseConfig,
@@ -39,7 +50,8 @@ class DatabaseFactory(
         dataSource = HikariDataSource(buildHikariConfig())
         database = Database.connect(dataSource)
         transaction(database) {
-            SchemaUtils.create(UsersTable, RefreshTokensTable)
+            SchemaUtils.create(UsersTable, RefreshTokensTable, CategoriesTable, ExpensesTable)
+            seedSystemCategoriesIfEmpty()
         }
     }
 
@@ -94,6 +106,30 @@ class DatabaseFactory(
             leakDetectionThreshold = LEAK_DETECTION_MS
             validate()
         }
+
+    /**
+     * Inserts the canonical default category rows when the DB has none yet (`user_id` IS NULL).
+     * Idempotent across restarts; safe for dev containers that wipe volume on each run.
+     */
+    private fun seedSystemCategoriesIfEmpty() {
+        val existing =
+            CategoriesTable
+                .selectAll()
+                .where { CategoriesTable.userId eq null }
+                .count()
+        if (existing > 0L) return
+        for (template in DefaultCategories.ALL) {
+            CategoriesTable.insert {
+                it[CategoriesTable.nameKey] = template.key
+                it[CategoriesTable.name] =
+                    DefaultCategoryTranslations.displayName(template.key, storedName = "", languageTag = "en")
+                it[CategoriesTable.icon] = template.icon
+                it[CategoriesTable.color] = template.color
+                it[CategoriesTable.isDefault] = true
+                it[CategoriesTable.userId] = null
+            }
+        }
+    }
 
     companion object {
         private const val LEAK_DETECTION_MS = 30_000L

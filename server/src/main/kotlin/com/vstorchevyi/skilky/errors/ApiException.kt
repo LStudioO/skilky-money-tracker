@@ -19,3 +19,7 @@ class ConflictException(
 class UnauthorizedException(
     message: String = "Invalid credentials",
 ) : ApiException(HttpStatusCode.Unauthorized, "UNAUTHORIZED", message)
+
+class ForbiddenException(
+    message: String,
+) : ApiException(HttpStatusCode.Forbidden, "FORBIDDEN", message)

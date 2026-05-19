@@ -16,6 +16,7 @@ erDiagram
     CATEGORIES {
         bigint id PK
         varchar name
+        varchar name_key "nullable — stable slug for system defaults"
         varchar icon
         varchar color
         boolean is_default
@@ -31,7 +32,7 @@ erDiagram
         varchar currency
         text note "nullable"
         varchar input_type "TEXT, AUDIO, IMAGE"
-        uuid client_id UK "for offline sync dedup"
+        varchar client_id UK "UUID string; dedup per user"
         date date
         timestamp created_at
         timestamp updated_at
@@ -69,7 +70,8 @@ erDiagram
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
 | id | bigint | PK, auto-increment | |
-| name | varchar(100) | not null | |
+| name | varchar(100) | not null | Display fallback (English for seeded rows); API may override using `name_key` + `Accept-Language` |
+| name_key | varchar(32) | nullable | Stable key for seeded system rows (`food`, `transport`, …); null for user-created categories |
 | icon | varchar(50) | not null | Prefixed icon: "material:restaurant" or "emoji:💪" |
 | color | varchar(7) | not null | Hex color, e.g. "#4CAF50" |
 | is_default | boolean | not null, default false | System-provided category |
@@ -227,9 +229,11 @@ ExpenseListResponse(items: List<ExpenseResponse>, total: Int, page: Int, size: I
 ### Categories
 
 ```
-CategoryDto(id: Long, name: String, icon: String, color: String, isDefault: Boolean)
+CategoryDto(id: Long, name: String, icon: String, color: String, isDefault: Boolean, nameKey: String?)
 CreateCategoryRequest(name: String, icon: String, color: String)
 ```
+
+For system defaults, `nameKey` is a stable slug (see `:core` `DefaultCategoryKeys`); `name` is localized from `DefaultCategoryTranslations` using the HTTP `Accept-Language` header (`en` and `uk` supported; anything else falls back to English).
 
 ### Analytics
 
@@ -271,16 +275,18 @@ value class Email(val value: String) {
 
 ## Default Categories
 
-| Category | Icon | Color | Description |
-|----------|------|-------|-------------|
-| Food | material:restaurant | #4CAF50 | Groceries, restaurants, coffee |
-| Transport | material:directions_car | #2196F3 | Taxi, fuel, public transport |
-| Housing | material:home | #9C27B0 | Rent, utilities, maintenance |
-| Entertainment | material:movie | #E91E63 | Movies, games, events |
-| Health | material:medical_services | #F44336 | Pharmacy, doctor, gym |
-| Shopping | material:shopping_bag | #FF9800 | Clothes, electronics, gifts |
-| Bills | material:receipt_long | #607D8B | Phone, internet, subscriptions |
-| Education | material:school | #3F51B5 | Courses, books, supplies |
-| Other | material:more_horiz | #795548 | Anything that doesn't fit above |
+Each row is seeded with `name_key` and English `name`; the API returns localized `name` for `en` / `uk` via `Accept-Language` (see `DefaultCategoryTranslations` in `:core`).
+
+| name_key | English | Ukrainian | Icon | Color | Description |
+|----------|---------|-----------|------|-------|-------------|
+| food | Food | Їжа | material:restaurant | #4CAF50 | Groceries, restaurants, coffee |
+| transport | Transport | Транспорт | material:directions_car | #2196F3 | Taxi, fuel, public transport |
+| housing | Housing | Житло | material:home | #9C27B0 | Rent, utilities, maintenance |
+| entertainment | Entertainment | Розваги | material:movie | #E91E63 | Movies, games, events |
+| health | Health | Здоров'я | material:medical_services | #F44336 | Pharmacy, doctor, gym |
+| shopping | Shopping | Покупки | material:shopping_bag | #FF9800 | Clothes, electronics, gifts |
+| bills | Bills | Рахунки | material:receipt_long | #607D8B | Phone, internet, subscriptions |
+| education | Education | Освіта | material:school | #3F51B5 | Courses, books, supplies |
+| other | Other | Інше | material:more_horiz | #795548 | Anything that doesn't fit above |
 
 **Icon format:** Prefixed string. Defaults use `material:<icon_name>` (Material Icons, built into Compose). Custom categories use `emoji:<emoji>` (user picks from emoji picker).

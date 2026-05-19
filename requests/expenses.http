@@ -1,0 +1,147 @@
+### Expenses — JWT + batch idempotency
+#
+# **Run the next two requests in order** (Register → GET categories) so `authToken` and
+# `{{categoryId}}` are set. Same `authToken` empty-string default as `categories.http`.
+#
+# `{{sampleClientId}}` comes from `http-client.env.json` (UUID v4). Reuse it for dedup tests.
+
+### Register — sets authToken (unique email so this file is self-contained)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "skilky-expenses-http-{{$timestamp}}@example.com",
+  "password": "secret123",
+  "displayName": "HTTP expenses"
+}
+
+> {%
+    client.test("status is 201", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("authToken", response.body.token);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### GET categories — sets categoryId from the seeded `food` row
+GET {{baseUrl}}/api/{{apiVersion}}/categories
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    const food = response.body.find(function (c) { return c.nameKey === "food"; });
+    if (food) {
+        client.global.set("categoryId", food.id);
+    }
+%}
+
+### List expenses (optional query filters)
+GET {{baseUrl}}/api/{{apiVersion}}/expenses?page=0&size=50
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+%}
+
+### Batch create expenses — 201 (captures `{{expenseId}}` for PUT/DELETE below)
+POST {{baseUrl}}/api/{{apiVersion}}/expenses
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "items": [
+    {
+      "name": "Milk",
+      "amount": 45.0,
+      "currency": "UAH",
+      "categoryId": {{categoryId}},
+      "note": null,
+      "inputType": "TEXT",
+      "clientId": "{{sampleClientId}}",
+      "date": "2026-03-21"
+    }
+  ]
+}
+
+> {%
+    client.test("status is 201", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    const first = response.body.items && response.body.items[0];
+    if (first) {
+        client.global.set("expenseId", first.id);
+    }
+%}
+
+### Same batch again — still 201, same server id (clientId dedup)
+POST {{baseUrl}}/api/{{apiVersion}}/expenses
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "items": [
+    {
+      "name": "Milk",
+      "amount": 45.0,
+      "currency": "UAH",
+      "categoryId": {{categoryId}},
+      "note": null,
+      "inputType": "TEXT",
+      "clientId": "{{sampleClientId}}",
+      "date": "2026-03-21"
+    }
+  ]
+}
+
+> {%
+    client.test("status is 201", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    const first = response.body.items && response.body.items[0];
+    const expected = client.global.get("expenseId");
+    client.test("dedup returns same id", function() {
+        client.assert(first && first.id === expected, "Expected same expense id after dedup");
+    });
+%}
+
+### Update expense — 200 (requires `{{expenseId}}` from batch create)
+PUT {{baseUrl}}/api/{{apiVersion}}/expenses/{{expenseId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Milk 2%",
+  "amount": 46.0,
+  "currency": "UAH",
+  "categoryId": {{categoryId}},
+  "note": "from http client",
+  "inputType": "TEXT",
+  "clientId": "{{sampleClientId}}",
+  "date": "2026-03-21"
+}
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+%}
+
+### Delete expense — 204
+DELETE {{baseUrl}}/api/{{apiVersion}}/expenses/{{expenseId}}
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.test("status is 204", function() {
+        client.assert(response.status === 204, "Expected 204 but got " + response.status);
+    });
+%}

@@ -1,5 +1,9 @@
 package com.vstorchevyi.skilky.api
 
+/**
+ * Wire paths shared by `:server` and KMP clients via `:core` so literals stay aligned with the
+ * REST contract in `docs/api-spec.md` at the repository root.
+ */
 object ApiRoutes {
     const val BASE = "/api/v1"
 
