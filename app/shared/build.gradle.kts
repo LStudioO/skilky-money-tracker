@@ -6,6 +6,19 @@ plugins {
     alias(libs.plugins.composeHotReload)
 }
 
+// The Compose Multiplatform resources plugin generates a `Res` accessor
+// class under `packageOfResClass`. It's pure codegen, not something we
+// write tests against; counting it just pulls the module's coverage down.
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("skilky.composeapp.generated.resources")
+            }
+        }
+    }
+}
+
 kotlin {
     android {
         namespace = "com.vstorchevyi.skilky.app"
