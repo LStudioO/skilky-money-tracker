@@ -92,10 +92,12 @@ Rotate tokens. The old refresh token is invalidated.
 
 Send free-form text, get back structured expense items.
 
+Requires `Authorization: Bearer <jwt>`. The server loads the caller's visible categories (system defaults + their custom ones) and lets the model pick from that list, so suggestions cover user-created categories like "Gym" or "Pets". Returns `503 AI_UNAVAILABLE` when the upstream Ollama service is unreachable or returns a malformed response. Returns `422 VALIDATION_ERROR` for blank text or text longer than 2000 characters. Returns `404` when the server has no `skilky.ai.*` block (or no database) configured.
+
 **Request:**
 ```json
 {
-  "text": "milk 45, bread 22, taxi to work 120",
+  "text": "milk 45, gym membership 500, taxi 120",
   "currency": "UAH"
 }
 ```
@@ -108,72 +110,110 @@ Send free-form text, get back structured expense items.
       "name": "Milk",
       "amount": 45.0,
       "currency": "UAH",
-      "suggestedCategory": "Food",
+      "suggestedCategoryId": 1,
+      "suggestedCategoryName": "Food",
       "confidence": 0.95
     },
     {
-      "name": "Bread",
-      "amount": 22.0,
+      "name": "Gym membership",
+      "amount": 500.0,
       "currency": "UAH",
-      "suggestedCategory": "Food",
-      "confidence": 0.97
+      "suggestedCategoryId": 42,
+      "suggestedCategoryName": "Gym",
+      "confidence": 0.9
     },
     {
-      "name": "Taxi to work",
+      "name": "Taxi",
       "amount": 120.0,
       "currency": "UAH",
-      "suggestedCategory": "Transport",
+      "suggestedCategoryId": 2,
+      "suggestedCategoryName": "Transport",
       "confidence": 0.92
     }
   ]
 }
 ```
 
+`suggestedCategoryId` references a row the caller can see in `GET /categories` (either a system default or one of their own). `null` when the model picked a name that does not match any visible category. `suggestedCategoryName` is the raw string the model produced, kept so the client can show it as a hint even when no id matched ("the model thinks this is 'Pet food'").
+
 ---
 
 ### POST `/parse/audio`
 
-Send an audio recording, get back transcript + structured items.
+Send a short voice note, get back the transcript plus structured expense items. Gemma 4 E4B handles both transcription and extraction in one model — no separate Whisper service.
+
+Requires `Authorization: Bearer <jwt>`. Returns 422 for bad audio (see contract below), 503 when Ollama is unreachable, 404 when AI is not configured.
+
+**Audio contract** (strict — clients must conform):
+- WAV container with RIFF/WAVE header
+- 16 kHz sample rate
+- mono (1 channel)
+- 16-bit PCM
+- ≤ 10 MB
+- ≤ ~30-60 seconds of audio (Gemma 4 E4B's input limit)
+
+Each client platform records natively in this format. Android: `AudioRecord` with `PCM_16BIT` plus a manual 44-byte RIFF header. iOS / watchOS: `AVAudioRecorder` with `kAudioFormatLinearPCM`. WearOS: same as Android.
 
 **Request:** `multipart/form-data`
-- `file` — audio file (WAV, MP3, M4A, OGG)
-- `language` — optional, `"en"` or `"uk"` (auto-detect if omitted)
-- `currency` — default currency code, e.g. `"UAH"`
+- `file` — WAV bytes as above
+- `currency` — currency code, e.g. `"UAH"`
 
 **Response (200):**
 ```json
 {
-  "transcript": "milk forty five, bread twenty two",
+  "transcript": "milk forty five, taxi one twenty",
   "items": [
     {
       "name": "Milk",
       "amount": 45.0,
       "currency": "UAH",
-      "suggestedCategory": "Food",
+      "suggestedCategoryId": 1,
+      "suggestedCategoryName": "Food",
       "confidence": 0.88
     },
     {
-      "name": "Bread",
-      "amount": 22.0,
+      "name": "Taxi",
+      "amount": 120.0,
       "currency": "UAH",
-      "suggestedCategory": "Food",
-      "confidence": 0.90
+      "suggestedCategoryId": 2,
+      "suggestedCategoryName": "Transport",
+      "confidence": 0.9
     }
   ]
 }
 ```
 
+`transcript` is populated only for this endpoint. Same `suggestedCategoryId` / `suggestedCategoryName` semantics as `/parse/text`.
+
 ---
 
 ### POST `/parse/receipt`
 
-Send a receipt photo, get back extracted line items.
+Send a receipt photo, get back extracted line items. Same Ollama backend as `/parse/text` and `/parse/audio`; the system prompt steers the model to copy line item labels verbatim, treat the rightmost number per row as the line total, and ignore subtotals/tax/cash/change lines.
+
+Requires `Authorization: Bearer <jwt>`. Returns 422 for non-JPEG/PNG input or files > 10 MB.
 
 **Request:** `multipart/form-data`
-- `file` — image file (JPEG, PNG)
-- `currency` — default currency code
+- `file` — JPEG or PNG bytes, ≤ 10 MB
+- `currency` — currency code
 
-**Response (200):** Same shape as `/parse/text` response.
+**Response (200):** Same `items` shape as `/parse/text` plus a `rawText` field with the full OCR transcription the model produced. `rawText` is useful for debugging when an `items` entry looks wrong — you can see exactly what the model read off the photo.
+
+```json
+{
+  "items": [
+    {
+      "name": "ШАМПІН МАРИН ЦІЛІ 420Г RIO",
+      "amount": 51.24,
+      "currency": "UAH",
+      "suggestedCategoryId": 1,
+      "suggestedCategoryName": "Food",
+      "confidence": 1.0
+    }
+  ],
+  "rawText": "ТзОВ ТВК 'ЛЬВІВХОЛОД'\n... ШАМПІН МАРИН ЦІЛІ 420Г RIO 51.24 ..."
+}
+```
 
 ---
 
@@ -496,4 +536,4 @@ All errors follow this shape:
 | 409 | `CONFLICT` | Duplicate resource (email, clientId) |
 | 422 | `VALIDATION_ERROR` | Field validation failed |
 | 500 | `INTERNAL_ERROR` | Server error |
-| 503 | `AI_UNAVAILABLE` | Ollama or Whisper service not reachable |
+| 503 | `AI_UNAVAILABLE` | Ollama not reachable or returned a malformed response |

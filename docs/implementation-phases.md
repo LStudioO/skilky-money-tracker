@@ -93,17 +93,19 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 
 **Goal:** Quick-entry bar sends text to server, AI parses it, user previews and confirms.
 
+> **Update (2026-05):** Phase 4 server work landed using `gemma4:e4b` as the model. The originally planned `AiParsingService` interface was skipped (no concrete second implementation in sight); the concrete `TextParsingService` is wired directly. `llama3.2` is no longer the default.
+
 ### Deliverables
 
-- Server: `OllamaService` — Ktor Client calling Ollama's `/api/chat` endpoint
+- Server: `OllamaClient` — Ktor Client calling Ollama's `/api/chat` endpoint
 - Server: `PromptTemplates` — system prompt for structured expense extraction
-- Server: `AiParsingService` interface + implementation
+- Server: `TextParsingService` — orchestrator (single concrete class)
 - Server: `ParseRoutes` — `POST /parse/text`
 - Client: `QuickEntryBar` composable — text field with submit
 - Client: `ParsePreviewSheet` — bottom sheet with editable parsed items
 - Client: `InputViewModel` — orchestrate: submit text → show preview → confirm → save
 - Docker: Add `ollama` service to docker-compose.yml
-- Documentation: how to pull the text model (`ollama pull llama3.2`)
+- Documentation: how to pull the text model (`ollama pull gemma4:e4b`)
 
 ### Checkpoint
 
@@ -118,17 +120,19 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 
 **Goal:** Voice and image input work end-to-end.
 
+> **Update (2026-05):** Server side landed alongside Phase 4. **No Whisper service, no separate vision model** — `gemma4:e4b` handles audio (WAV 16 kHz mono, ≤30-60 s) and receipt images natively via Ollama. Saves one container and one model pull. Client work (recorders, picker, UI) is still pending.
+
 ### Deliverables
 
-- Server: `WhisperService` — Ktor Client calling Speaches `/v1/audio/transcriptions`
+- ~~Server: `WhisperService` — Ktor Client calling Speaches `/v1/audio/transcriptions`~~ (not needed)
 - Server: `ParseRoutes` — `POST /parse/audio`, `POST /parse/receipt`
-- Server: Receipt vision via Ollama with LLaVA/Moondream model
-- Client: `AudioRecorder` (expect/actual — Android MediaRecorder, iOS AVAudioRecorder)
+- ~~Server: Receipt vision via Ollama with LLaVA/Moondream model~~ (Gemma 4 instead)
+- Client: `AudioRecorder` (expect/actual — Android `AudioRecord`+WAV header, iOS `AVAudioRecorder` PCM)
 - Client: Audio button in `QuickEntryBar` — record, show recording indicator, send to server
 - Client: Camera/gallery image picker (expect/actual)
 - Client: Camera button in `QuickEntryBar` — capture/pick image, send to server
-- Docker: Add `whisper` (Speaches) service to docker-compose.yml
-- Documentation: how to pull vision model (`ollama pull llava`)
+- ~~Docker: Add `whisper` (Speaches) service to docker-compose.yml~~ (not needed)
+- ~~Documentation: how to pull vision model (`ollama pull llava`)~~ (Gemma 4 already covers vision)
 
 ### Checkpoint
 

@@ -1,11 +1,17 @@
 package com.vstorchevyi.skilky
 
+import com.vstorchevyi.skilky.ai.CachedCategoryLoader
+import com.vstorchevyi.skilky.ai.CategoryHint
+import com.vstorchevyi.skilky.ai.OllamaClient
+import com.vstorchevyi.skilky.ai.TextParsingService
+import com.vstorchevyi.skilky.ai.parseServiceOverride
 import com.vstorchevyi.skilky.config.AppConfig
 import com.vstorchevyi.skilky.db.DatabaseFactory
 import com.vstorchevyi.skilky.plugins.configureCallId
 import com.vstorchevyi.skilky.plugins.configureCallLogging
 import com.vstorchevyi.skilky.plugins.configureCors
 import com.vstorchevyi.skilky.plugins.configureJwtAuthentication
+import com.vstorchevyi.skilky.plugins.configureRateLimit
 import com.vstorchevyi.skilky.plugins.configureRouting
 import com.vstorchevyi.skilky.plugins.configureSerialization
 import com.vstorchevyi.skilky.plugins.configureStatusPages
@@ -51,12 +57,15 @@ fun Application.module() {
     val refreshTokenRepository = databaseFactory?.let { RefreshTokenRepository(it, tokenHasher) }
     val categoryRepository = databaseFactory?.let { CategoryRepository(it) }
     val expenseRepository = databaseFactory?.let { ExpenseRepository(it) }
+    val textParsingService =
+        parseServiceOverride() ?: buildTextParsingService(appConfig.ai, categoryRepository)
 
     configureCallId()
     configureCallLogging()
     configureSerialization()
     configureStatusPages()
     configureJwtAuthentication(tokenProvider)
+    configureRateLimit()
     configureCors(appConfig)
     configureRouting(
         appConfig = appConfig,
@@ -65,7 +74,33 @@ fun Application.module() {
         refreshTokenRepository = refreshTokenRepository,
         categoryRepository = categoryRepository,
         expenseRepository = expenseRepository,
+        textParsingService = textParsingService,
         passwordHasher = passwordHasher,
         tokenProvider = tokenProvider,
+    )
+}
+
+/**
+ * Builds the real Ollama-backed parser when the operator has supplied
+ * both an AI block and a database (the second is required because the
+ * service needs the user's category list to build a useful prompt).
+ * Returns null when either piece is missing; the parse route then 404s.
+ */
+private fun Application.buildTextParsingService(
+    aiConfig: AppConfig.AiConfig?,
+    categoryRepository: CategoryRepository?,
+): TextParsingService? {
+    if (aiConfig == null || categoryRepository == null) return null
+    val client = OllamaClient(aiConfig)
+    monitor.subscribe(ApplicationStopped) { client.close() }
+    val cachedLoader =
+        CachedCategoryLoader(
+            source = { userId ->
+                categoryRepository.listVisible(userId).map { CategoryHint(id = it.id, name = it.name) }
+            },
+        )
+    return TextParsingService(
+        ollamaClient = client,
+        loadCategories = cachedLoader,
     )
 }

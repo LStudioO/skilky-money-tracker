@@ -7,6 +7,7 @@ JVM-only Ktor 3.x server. Uses PostgreSQL with Exposed 1.x ORM and HikariCP.
 ```
 src/main/kotlin/com/vstorchevyi/skilky/
 ├── Application.kt                 # Application.module(): installs plugins, registers routes
+├── ai/                            # Ollama HTTP client, prompt templates, parsing orchestration
 ├── config/                        # Typed config wrappers over HOCON
 ├── plugins/                       # One file per Ktor plugin install (Serialization, StatusPages, etc.)
 ├── routes/                        # One file per feature group: fun Route.xxxRoutes(...)

@@ -12,6 +12,11 @@
   `{{categoryId}}` from the seeded `food` row.
 - **`expenses.http`** — Register + GET categories, then expense list / batch / dedup / update /
   delete.
+- **`parse.http`** — Register, then AI text / audio / receipt extraction. Audio uses the
+  committed `voice-uk.wav` fixture (Ukrainian "молоко сорок пʼять гривень, хліб двадцять дві
+  гривні, таксі сто двадцять" via macOS `say -v Lesya`). Receipt requests look for
+  `requests/receipt-uk.jpg` and `requests/receipt-us.jpg` — drop your own photos there
+  (gitignored) before running. Routes 404 when `skilky.ai.*` is not configured.
 
 ## Run the API locally (otherwise `Connection refused` on `:8080`)
 

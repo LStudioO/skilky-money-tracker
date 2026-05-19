@@ -25,4 +25,10 @@ object ApiRoutes {
         const val ROOT = "$BASE/categories"
         const val BY_ID = "$ROOT/{id}"
     }
+
+    object Parse {
+        const val TEXT = "$BASE/parse/text"
+        const val AUDIO = "$BASE/parse/audio"
+        const val RECEIPT = "$BASE/parse/receipt"
+    }
 }
