@@ -183,6 +183,8 @@ Send a receipt photo, get back extracted line items.
 
 List expenses with pagination and filtering.
 
+**Headers:** Optional `Accept-Language` — nested `category.name` for system defaults follows the same localization rules as `GET /categories`.
+
 **Query params:**
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -298,20 +300,23 @@ Update a single expense.
 
 Returns system defaults + user's custom categories.
 
+**Headers:** Optional `Accept-Language` (`en`, `uk`, …). Default category **names** are returned in the best matching locale; `nameKey` is always a stable ASCII slug for system rows (e.g. `food`) so clients can sync or match AI suggestions regardless of UI language.
+
 **Response (200):**
 ```json
 [
   {
     "id": 1,
     "name": "Food",
-    "icon": "restaurant",
+    "icon": "material:restaurant",
     "color": "#4CAF50",
-    "isDefault": true
+    "isDefault": true,
+    "nameKey": "food"
   },
   {
     "id": 10,
     "name": "Gym",
-    "icon": "fitness_center",
+    "icon": "emoji:💪",
     "color": "#009688",
     "isDefault": false
   }

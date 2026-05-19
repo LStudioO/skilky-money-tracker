@@ -1,6 +1,7 @@
 package com.vstorchevyi.skilky.security
 
 import com.auth0.jwt.JWT
+import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.vstorchevyi.skilky.config.AppConfig
 import java.util.Date
@@ -9,6 +10,13 @@ class JwtTokenProvider(
     private val config: AppConfig.JwtConfig,
 ) {
     private val algorithm = Algorithm.HMAC256(config.secret)
+
+    val verifier: JWTVerifier =
+        JWT
+            .require(algorithm)
+            .withIssuer(config.issuer)
+            .withAudience(config.audience)
+            .build()
 
     fun createAccessToken(
         userId: Long,

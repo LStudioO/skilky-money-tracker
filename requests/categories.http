@@ -1,0 +1,120 @@
+### Categories — JWT + optional localization
+#
+# **Run the next request first** (or paste a JWT into `authToken` in `http-client.env.json`).
+# `authToken` / `refreshToken` exist as empty strings in the env file so `{{authToken}}` always
+# substitutes; without running Register you would get "unsubstituted variable" errors.
+#
+# The **List categories** request further down stores `{{categoryId}}` from the `food` row for
+# `expenses.http`.
+
+### Register — mints a fresh user and sets authToken (safe to re-run: unique email)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "skilky-categories-http-{{$timestamp}}@example.com",
+  "password": "secret123",
+  "displayName": "HTTP categories"
+}
+
+> {%
+    client.test("status is 201", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("authToken", response.body.token);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### List categories (defaults — English names)
+GET {{baseUrl}}/api/{{apiVersion}}/categories
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.test("response is a JSON array", function() {
+        client.assert(Array.isArray(response.body), "Expected array body");
+    });
+    const food = response.body.find(function (c) { return c.nameKey === "food"; });
+    if (food) {
+        client.global.set("categoryId", food.id);
+    }
+%}
+
+### List categories — Ukrainian labels for seeded defaults (`nameKey` unchanged)
+GET {{baseUrl}}/api/{{apiVersion}}/categories
+Authorization: Bearer {{authToken}}
+Accept: application/json
+Accept-Language: uk-UA,en;q=0.8
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    const food = response.body.find(function (c) { return c.nameKey === "food"; });
+    client.test("Food label localized when uk preferred", function() {
+        client.assert(food && food.name === "Їжа", "Expected Ukrainian Food label, got " + (food && food.name));
+    });
+%}
+
+### Create custom category — 201
+POST {{baseUrl}}/api/{{apiVersion}}/categories
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Gym",
+  "icon": "emoji:💪",
+  "color": "#009688"
+}
+
+> {%
+    client.test("status is 201", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    if (response.body && response.body.id) {
+        client.global.set("customCategoryId", response.body.id);
+    }
+%}
+
+### Update custom category — 200 (uses id from previous create; adjust if you re-ran tests)
+PUT {{baseUrl}}/api/{{apiVersion}}/categories/{{customCategoryId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Gym updated",
+  "icon": "emoji:💪",
+  "color": "#00796B"
+}
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+%}
+
+### Delete system default — should 403
+DELETE {{baseUrl}}/api/{{apiVersion}}/categories/{{categoryId}}
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.test("status is 403", function() {
+        client.assert(response.status === 403, "Expected 403 but got " + response.status);
+    });
+%}
+
+### Delete custom category — 204 (run after **Create custom category**)
+DELETE {{baseUrl}}/api/{{apiVersion}}/categories/{{customCategoryId}}
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.test("status is 204", function() {
+        client.assert(response.status === 204, "Expected 204 but got " + response.status);
+    });
+%}

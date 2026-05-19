@@ -1,10 +1,17 @@
 package com.vstorchevyi.skilky.support
 
+import com.vstorchevyi.skilky.api.CreateCategoryRequest
+import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.ExpenseBatchRequest
+import com.vstorchevyi.skilky.api.ExpenseRequest
+import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.api.LoginRequest
 import com.vstorchevyi.skilky.api.RefreshRequest
 import com.vstorchevyi.skilky.api.RegisterRequest
 import com.vstorchevyi.skilky.config.AppConfig
 import com.vstorchevyi.skilky.domain.model.User
+import kotlinx.datetime.LocalDate
+import java.util.UUID
 
 // Test data builders. Each function returns a valid default that
 // individual tests override piecewise. Keeps test arrange-sections short
@@ -53,3 +60,31 @@ fun aJwtConfig(
     accessTokenExpirationDays = accessTokenExpirationDays,
     refreshTokenExpirationDays = refreshTokenExpirationDays,
 )
+
+fun aCreateCategoryRequest(
+    name: String = "Gym",
+    icon: String = "emoji:💪",
+    color: String = "#009688",
+) = CreateCategoryRequest(name = name, icon = icon, color = color)
+
+fun anExpenseRequest(
+    name: String = "Milk",
+    amount: Double = 45.0,
+    currency: Currency = Currency.UAH,
+    categoryId: Long = 1L,
+    note: String? = null,
+    inputType: InputType = InputType.TEXT,
+    clientId: String = UUID.randomUUID().toString(),
+    date: LocalDate = LocalDate(2026, 3, 21),
+) = ExpenseRequest(
+    name = name,
+    amount = amount,
+    currency = currency,
+    categoryId = categoryId,
+    note = note,
+    inputType = inputType,
+    clientId = clientId,
+    date = date,
+)
+
+fun anExpenseBatchRequest(items: List<ExpenseRequest> = listOf(anExpenseRequest())) = ExpenseBatchRequest(items = items)

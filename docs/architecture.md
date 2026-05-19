@@ -36,6 +36,8 @@ graph TB
     style W fill:#F44336,color:#fff
 ```
 
+
+
 ## Monorepo Module Structure
 
 ```
@@ -76,9 +78,12 @@ graph LR
     style C fill:#9C27B0,color:#fff
 ```
 
+
+
 ### Module Details
 
 #### :shared:models
+
 - **Dependencies:** kotlinx-serialization, kotlinx-datetime only
 - **Contents:** All DTOs (request/response), enums (Currency, InputType), ApiRoutes constants, shared validation
 - **Validation:** Value classes with `require()` for domain types (e.g. `Email`, password strength rules). Shared between client and server — validate once, enforce everywhere.
@@ -86,18 +91,21 @@ graph LR
 - **Purpose:** API contract that both client and server import — ensures they can never drift
 
 #### :shared:core
+
 - **Dependencies:** :shared:models, kotlinx-coroutines, kotlinx-datetime
-- **Contents:** CurrencyFormatter, DateUtils, AppResult<T> sealed class, localization StringKeys
+- **Contents:** CurrencyFormatter, DateUtils, AppResult sealed class, localization StringKeys
 - **Targets:** commonMain only
 - **Purpose:** Business logic shared between client and server
 
 #### :composeApp
+
 - **Dependencies:** :shared:core, Room KMP, Ktor Client, Koin, Navigation Compose, Coil, Compose MP
 - **Targets:** androidMain, iosMain
 - **expect/actual:** DatabaseFactory, NetworkMonitor, AudioRecorder
 - **Purpose:** The mobile app
 
 #### :server
+
 - **Dependencies:** :shared:core, Ktor Server, Exposed, Koin, PostgreSQL driver
 - **Targets:** JVM only
 - **Purpose:** Backend API + AI orchestration
@@ -119,6 +127,8 @@ flowchart LR
     VM -->|one-shot| EFFECT[SideEffect]
     EFFECT --> UI
 ```
+
+
 
 Each feature screen defines three things:
 
@@ -186,15 +196,19 @@ flowchart TD
     style QUEUE fill:#F44336,color:#fff
 ```
 
+
+
 ### Repository Data Strategies
 
 Repositories coordinate between local (Room) and remote (Ktor) data sources:
 
-| Strategy | How it works | Used for |
-|----------|-------------|----------|
-| **networkFirst** | Fetch from server → cache in Room → fallback to Room on network failure | Expenses, analytics |
-| **cacheFirst** | Return Room data immediately → refresh from server in background | Categories (rarely change) |
-| **localOnly** | Read/write Room directly, enqueue sync | Offline input queue |
+
+| Strategy         | How it works                                                            | Used for                   |
+| ---------------- | ----------------------------------------------------------------------- | -------------------------- |
+| **networkFirst** | Fetch from server → cache in Room → fallback to Room on network failure | Expenses, analytics        |
+| **cacheFirst**   | Return Room data immediately → refresh from server in background        | Categories (rarely change) |
+| **localOnly**    | Read/write Room directly, enqueue sync                                  | Offline input queue        |
+
 
 ### Error Handling
 
@@ -211,6 +225,7 @@ NetworkException (sealed)
 ```
 
 API calls are wrapped in `AppResult<T>` (sealed class in `:shared:core`):
+
 - `AppResult.Success<T>` — contains data
 - `AppResult.Error` — contains `NetworkException`
 
@@ -260,7 +275,10 @@ flowchart LR
     KTOR -->|parsed text| OLLAMA
 ```
 
+
+
 **AiParsingService interface:**
+
 ```
 parseText(text, currency) → List<ParsedExpenseItem>
 parseAudio(audioBytes, language, currency) → ParseResult (transcript + items)
@@ -302,6 +320,8 @@ sequenceDiagram
     S-->>C: [expenses]
 ```
 
+
+
 - JWT lives 7 days, refresh token lives 90 days
 - Refresh token rotates on each use
 - Password change invalidates all refresh tokens (kills all sessions)
@@ -339,6 +359,8 @@ sequenceDiagram
     SM->>Q: Delete processed queue item
     UI-->>U: Pending card replaced with real expense items
 ```
+
+
 
 - Raw input (text/audio/image) stored locally in InputQueue table
 - When online: send to `/parse/*` → auto-save with AI categories → no user review backlog
@@ -387,6 +409,8 @@ flowchart LR
     CONFIRM --> SAVE
 ```
 
+
+
 ---
 
 ## Docker Deployment
@@ -425,3 +449,6 @@ graph TB
 
     INTERNET((Internet)) -- 8080 --> BE
 ```
+
+
+
