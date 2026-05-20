@@ -10,6 +10,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Single entry point for the three parse modalities (text, audio,
@@ -33,11 +35,13 @@ import kotlinx.serialization.json.jsonPrimitive
 class TextParsingService(
     private val ollamaClient: OllamaClient,
     private val loadCategories: suspend (userId: Long) -> List<CategoryHint>,
+    private val log: Logger = LoggerFactory.getLogger(TextParsingService::class.java),
 ) {
     suspend fun parseText(
         request: ParseTextRequest,
         userId: Long,
     ): ParseTextResponse {
+        val startNanos = System.nanoTime()
         val categories = loadCategories(userId)
         val raw =
             ollamaClient.chatJson(
@@ -45,7 +49,9 @@ class TextParsingService(
                 userPrompt = PromptTemplates.userPromptText(request.text, request.currency),
                 responseFormat = PromptTemplates.responseSchemaText,
             )
-        return raw.decodeResponse(request.currency, categories)
+        val response = raw.decodeResponse(request.currency, categories)
+        logParseComplete(modality = "text", startNanos = startNanos, response = response)
+        return response
     }
 
     /**
@@ -58,6 +64,7 @@ class TextParsingService(
         currency: Currency,
         userId: Long,
     ): ParseTextResponse {
+        val startNanos = System.nanoTime()
         val categories = loadCategories(userId)
         val raw =
             ollamaClient.chatJson(
@@ -66,7 +73,9 @@ class TextParsingService(
                 responseFormat = PromptTemplates.responseSchemaAudio,
                 inputs = listOf(audio),
             )
-        return raw.decodeResponse(currency, categories, includeTranscript = true)
+        val response = raw.decodeResponse(currency, categories, includeTranscript = true)
+        logParseComplete(modality = "audio", startNanos = startNanos, response = response)
+        return response
     }
 
     /**
@@ -79,6 +88,7 @@ class TextParsingService(
         currency: Currency,
         userId: Long,
     ): ParseTextResponse {
+        val startNanos = System.nanoTime()
         val categories = loadCategories(userId)
         val raw =
             ollamaClient.chatJson(
@@ -87,7 +97,34 @@ class TextParsingService(
                 responseFormat = PromptTemplates.responseSchemaReceipt,
                 inputs = listOf(image),
             )
-        return raw.decodeResponse(currency, categories, includeRawText = true)
+        val response = raw.decodeResponse(currency, categories, includeRawText = true)
+        logParseComplete(modality = "receipt", startNanos = startNanos, response = response)
+        return response
+    }
+
+    private fun logParseComplete(
+        modality: String,
+        startNanos: Long,
+        response: ParseTextResponse,
+    ) {
+        val durationMs = (System.nanoTime() - startNanos) / NANOS_PER_MILLI
+        val matched = response.items.count { it.suggestedCategoryId != null }
+        val unmatched =
+            response.items.count {
+                it.suggestedCategoryId == null && it.suggestedCategoryName != null
+            }
+        val parts =
+            mutableListOf(
+                "parse.complete",
+                "modality=$modality",
+                "duration_ms=$durationMs",
+                "items=${response.items.size}",
+                "matched=$matched",
+                "unmatched=$unmatched",
+            )
+        response.transcript?.let { parts += "transcript_len=${it.length}" }
+        response.rawText?.let { parts += "raw_text_len=${it.length}" }
+        log.info(parts.joinToString(" "))
     }
 
     private fun JsonObject.decodeResponse(
@@ -162,4 +199,8 @@ class TextParsingService(
     }
 
     private fun String.normaliseForMatch(): String = lowercase().trim()
+
+    private companion object {
+        const val NANOS_PER_MILLI: Long = 1_000_000
+    }
 }
