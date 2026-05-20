@@ -55,7 +55,13 @@ dependencies {
 
     implementation(libs.ktor.serverAuth)
     implementation(libs.ktor.serverAuthJwt)
+    implementation(libs.ktor.serverRateLimit)
     implementation(libs.bcrypt)
+
+    implementation(libs.ktor.clientCore)
+    implementation(libs.ktor.clientCio)
+    implementation(libs.ktor.clientContentNegotiation)
+    implementation(libs.kotlinx.serializationJson)
 
     implementation(libs.logback)
 
@@ -65,4 +71,5 @@ dependencies {
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.core)
     testImplementation(libs.kotest.assertionsCore)
+    testImplementation(libs.ktor.clientMock)
 }

@@ -1,0 +1,226 @@
+### Parse — AI text / audio / receipt extraction
+#
+# All three endpoints require JWT auth and a configured Ollama backend
+# (`skilky.ai.*` in application.conf, plus the model pulled). When AI
+# is not configured the routes 404; when Ollama is unreachable they 503.
+#
+# **Run the next request first** so `{{authToken}}` is set. Same
+# self-contained register pattern as `expenses.http`.
+
+### Register — sets authToken (unique email keeps this file self-contained)
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "skilky-parse-http-{{$timestamp}}@example.com",
+  "password": "secret123",
+  "displayName": "HTTP parse"
+}
+
+> {%
+    client.test("status is 201", function() {
+        client.assert(response.status === 201, "Expected 201 but got " + response.status);
+    });
+    client.global.set("authToken", response.body.token);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Parse free-form text — 200
+POST {{baseUrl}}/api/{{apiVersion}}/parse/text
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "milk 45, bread 22, taxi to work 120",
+  "currency": "UAH"
+}
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.test("returns items", function() {
+        client.assert(Array.isArray(response.body.items), "Expected items array");
+    });
+%}
+
+### Parse free-form Ukrainian text — 200
+# Conversational phrasing, not a comma-separated noun-amount list, so
+# the model has to pull out three line items from a real-sounding
+# sentence. Verifies Ukrainian text + UAH end-to-end.
+POST {{baseUrl}}/api/{{apiVersion}}/parse/text
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "Сьогодні витратив у Сільпо 480 грн на продукти, заправив машину на 1200, і взяв таксі до роботи за 180",
+  "currency": "UAH"
+}
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.test("returns three items", function() {
+        client.assert(
+            Array.isArray(response.body.items) && response.body.items.length === 3,
+            "Expected 3 items, got " + (response.body.items || []).length
+        );
+    });
+    client.test("amounts add up to 1860 UAH", function() {
+        const total = (response.body.items || []).reduce(function (a, i) { return a + i.amount; }, 0);
+        client.assert(total === 1860, "Expected total 1860, got " + total);
+    });
+    client.test("every item is in UAH", function() {
+        (response.body.items || []).forEach(function (item) {
+            client.assert(item.currency === "UAH", "Expected UAH, got " + item.currency);
+        });
+    });
+%}
+
+### Parse text — blank input is 422
+POST {{baseUrl}}/api/{{apiVersion}}/parse/text
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "   ",
+  "currency": "UAH"
+}
+
+> {%
+    client.test("status is 422", function() {
+        client.assert(response.status === 422, "Expected 422 but got " + response.status);
+    });
+%}
+
+### Parse a Ukrainian voice note — 200
+# Uses the committed `voice-uk.wav` fixture: macOS `say -v Lesya` saying
+# "молоко сорок пʼять гривень, хліб двадцять дві гривні, таксі сто
+# двадцять". Sanity-check that Gemma transcribes Ukrainian and pulls
+# the three items.
+#
+# Regenerate locally with:
+#   say -v Lesya -o requests/voice-uk.wav --data-format=LEI16@16000 \
+#     "молоко сорок пʼять гривень, хліб двадцять дві гривні, таксі сто двадцять"
+#
+# @timeout 600000
+POST {{baseUrl}}/api/{{apiVersion}}/parse/audio
+Authorization: Bearer {{authToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="currency"
+
+UAH
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="voice-uk.wav"
+Content-Type: audio/wav
+
+< ./voice-uk-real.wav
+--WebAppBoundary--
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.test("returns a transcript", function() {
+        client.assert(typeof response.body.transcript === "string", "Expected transcript string");
+    });
+%}
+
+### Parse audio — non-WAV upload is 422
+POST {{baseUrl}}/api/{{apiVersion}}/parse/audio
+Authorization: Bearer {{authToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="currency"
+
+UAH
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="not-audio.txt"
+Content-Type: text/plain
+
+this is not WAV bytes
+--WebAppBoundary--
+
+> {%
+    client.test("status is 422", function() {
+        client.assert(response.status === 422, "Expected 422 but got " + response.status);
+    });
+%}
+
+### Parse a UA receipt photo — 200
+# Currency UAH. Drop a photo of a real Ukrainian receipt (АТБ, Сільпо,
+# Нова Пошта, etc.) at `requests/receipt-uk.jpg` and re-run. Sanity-
+# check that Cyrillic OCR works and amounts come back in UAH.
+# @timeout 600000
+POST {{baseUrl}}/api/{{apiVersion}}/parse/receipt
+Authorization: Bearer {{authToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="currency"
+
+UAH
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="receipt-uk.jpg"
+Content-Type: image/jpeg
+
+< ./receipt-uk.jpg
+--WebAppBoundary--
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.test("returns items", function() {
+        client.assert(Array.isArray(response.body.items), "Expected items array");
+    });
+    client.test("items are USD-free (receipt was UAH)", function() {
+        const items = response.body.items || [];
+        items.forEach(function (item) {
+            client.assert(item.currency === "UAH", "Expected UAH for every item, got " + item.currency);
+        });
+    });
+%}
+
+### Parse a US receipt photo — 200
+# Currency USD. Drop a photo of a US receipt (Walmart, Target, a CVS
+# slip, …) at `requests/receipt-us.jpg`. Sanity-check Latin OCR and
+# that the items come back in USD.
+# @timeout 600000
+POST {{baseUrl}}/api/{{apiVersion}}/parse/receipt
+Authorization: Bearer {{authToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="currency"
+
+USD
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="receipt-us.jpg"
+Content-Type: image/jpeg
+
+< ./receipt-us.jpg
+--WebAppBoundary--
+
+> {%
+    client.test("status is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+    client.test("returns items", function() {
+        client.assert(Array.isArray(response.body.items), "Expected items array");
+    });
+    client.test("items are in USD", function() {
+        const items = response.body.items || [];
+        items.forEach(function (item) {
+            client.assert(item.currency === "USD", "Expected USD for every item, got " + item.currency);
+        });
+    });
+%}

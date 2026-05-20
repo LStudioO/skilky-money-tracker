@@ -29,3 +29,12 @@ requests/http-client.private.env.json
 
 # Docker Compose local env — may contain real passwords
 docker/.env
+
+# Personal audio recordings / receipt photos referenced by requests/parse.http.
+# `voice-uk.wav` is a committed test fixture and is exempt.
+requests/voice.wav
+requests/voice-*-real.wav
+requests/*-personal.wav
+requests/*.m4a
+requests/receipt*.jpg
+requests/receipt*.png

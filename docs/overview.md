@@ -35,7 +35,7 @@ Users can run their own instance with a single command:
 docker compose up -d
 ```
 
-This starts: Ktor backend + PostgreSQL + Ollama (AI) + Whisper (speech-to-text). No cloud dependencies.
+This starts: PostgreSQL + Ollama (gemma4:e4b handles text, voice, and receipt photos in one model). The Ktor server runs separately via `./gradlew :server:run`. No cloud dependencies.
 
 ---
 

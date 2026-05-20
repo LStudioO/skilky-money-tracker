@@ -31,9 +31,17 @@
 
 | Task | Technology | Model | Notes |
 |------|-----------|-------|-------|
-| Text Parsing | Ollama | llama3.2 / mistral | Multilingual — handles Ukrainian + English |
-| Receipt Vision | Ollama | LLaVA or Moondream | Multimodal — reads receipt images directly |
-| Speech-to-Text | Speaches (faster-whisper) | faster-whisper-small/medium | Ukrainian + English supported in medium/large models |
+| Text + Audio + Receipt Vision | Ollama | gemma4:e4b | One omnimodel handles all three modalities via Ollama's `/api/chat`. Multilingual (140 text languages, 35 multimodal), Apache 2.0, ~9 GB on disk with Q4_K_M quantization. Smaller `gemma4:e2b` is an option for memory-constrained boxes. |
+
+### Why one model
+
+Phase 4-5 originally planned text-only via Ollama plus Speaches/Whisper for audio and LLaVA for receipts (three services, three models). Gemma 4 E4B shipped April 2026 with native multilingual audio + image input, and Ollama supports all three input types for it from day one. Collapsing to one model gave us:
+
+- One Docker service instead of three.
+- One model pull instead of three.
+- Same wire contract per modality — only the prompt differs.
+
+Trade-off: receipt OCR with 4B vision params is weaker than a dedicated VLM. If that's a problem in practice we add a bigger VLM for `/parse/receipt` only.
 
 ### Why Ollama?
 

@@ -23,6 +23,7 @@ data class AppConfig(
     val database: DatabaseConfig?,
     val jwt: JwtConfig,
     val security: SecurityConfig,
+    val ai: AiConfig?,
 ) {
     data class ApiConfig(
         val version: String,
@@ -50,6 +51,28 @@ data class AppConfig(
     /** @property refreshTokenPepper HMAC key for refresh-token hashing. */
     data class SecurityConfig(
         val refreshTokenPepper: String,
+    )
+
+    /**
+     * Ollama-compatible chat endpoint config. Null when the operator has
+     * not configured an AI backend; in that case the parse routes are
+     * not registered and `/api/v1/parse/...` returns 404. Same shape as
+     * the nullable [DatabaseConfig]: presence of [baseUrl] is the signal
+     * to read the rest.
+     *
+     * @property timeoutSeconds Single per-request timeout covering connect,
+     *   socket, and overall request time. Generous default because local
+     *   models on CPU are slow; tune down once the model is on GPU.
+     * @property keepAlive How long Ollama keeps the model loaded after
+     *   a request. Ollama's default is 5 minutes; bumping to 30 minutes
+     *   avoids paying a ~10 s cold-start on sparse traffic. `"-1"` pins
+     *   the model forever.
+     */
+    data class AiConfig(
+        val baseUrl: String,
+        val model: String,
+        val timeoutSeconds: Int,
+        val keepAlive: String,
     )
 
     companion object {
@@ -95,6 +118,15 @@ data class AppConfig(
                     SecurityConfig(
                         refreshTokenPepper = config.property("skilky.security.refreshTokenPepper").getString(),
                     ),
+                ai =
+                    config.propertyOrNull("skilky.ai.baseUrl")?.let {
+                        AiConfig(
+                            baseUrl = config.property("skilky.ai.baseUrl").getString(),
+                            model = config.property("skilky.ai.model").getString(),
+                            timeoutSeconds = config.property("skilky.ai.timeoutSeconds").getString().toInt(),
+                            keepAlive = config.property("skilky.ai.keepAlive").getString(),
+                        )
+                    },
             )
     }
 }

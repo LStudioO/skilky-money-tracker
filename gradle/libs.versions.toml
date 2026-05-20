@@ -69,8 +69,12 @@ ktor-serverCors = { module = "io.ktor:ktor-server-cors-jvm", version.ref = "ktor
 ktor-serverCallId = { module = "io.ktor:ktor-server-call-id-jvm", version.ref = "ktor" }
 ktor-serverTestHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 ktor-clientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiation-jvm", version.ref = "ktor" }
+ktor-clientCore = { module = "io.ktor:ktor-client-core-jvm", version.ref = "ktor" }
+ktor-clientCio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor" }
+ktor-clientMock = { module = "io.ktor:ktor-client-mock-jvm", version.ref = "ktor" }
 ktor-serverAuth = { module = "io.ktor:ktor-server-auth-jvm", version.ref = "ktor" }
 ktor-serverAuthJwt = { module = "io.ktor:ktor-server-auth-jwt-jvm", version.ref = "ktor" }
+ktor-serverRateLimit = { module = "io.ktor:ktor-server-rate-limit-jvm", version.ref = "ktor" }
 bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
