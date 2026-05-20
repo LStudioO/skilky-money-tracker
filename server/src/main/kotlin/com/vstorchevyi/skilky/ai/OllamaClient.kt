@@ -9,12 +9,18 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
+import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.readUTF8Line
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import java.io.IOException
@@ -70,9 +76,82 @@ class OllamaClient(
             }
     }
 
+    /**
+     * Streaming counterpart of [chatJson]. Emits each incremental token
+     * chunk as it arrives from Ollama. The emitted strings are *deltas*,
+     * not the running accumulation; the caller concatenates to recover
+     * the full content.
+     *
+     * Ollama's `/api/chat` with `stream = true` returns NDJSON: one JSON
+     * envelope per token, terminated by a final envelope with `done=true`.
+     * We read line by line off the response channel and forward
+     * [OllamaChatResponse.message.content] for each non-terminal envelope.
+     *
+     * Failure modes match [chatJson] — anything that breaks the protocol
+     * raises [AiUnavailableException] so the caller surfaces a single
+     * typed error.
+     */
+    fun streamChat(
+        systemPrompt: String,
+        userPrompt: String,
+        responseFormat: JsonObject,
+        inputs: List<ByteArray> = emptyList(),
+    ): Flow<String> =
+        flow {
+            try {
+                httpClient
+                    .preparePost("${config.baseUrl.trimEnd('/')}/api/chat") {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            buildChatRequest(
+                                systemPrompt = systemPrompt,
+                                userPrompt = userPrompt,
+                                responseFormat = responseFormat,
+                                inputs = inputs,
+                                streaming = true,
+                            ),
+                        )
+                    }.execute { response ->
+                        if (!response.status.isSuccessfulOllamaStatus()) {
+                            throw AiUnavailableException("Ollama returned ${response.status.value}")
+                        }
+                        emitChunks(response.bodyAsChannel())
+                    }
+            } catch (cause: IOException) {
+                throw AiUnavailableException(
+                    "Cannot reach Ollama at ${config.baseUrl}: ${cause.message}",
+                    cause,
+                )
+            } catch (cause: HttpRequestTimeoutException) {
+                throw AiUnavailableException("Ollama timed out: ${cause.message}", cause)
+            }
+        }
+
     override fun close() {
         httpClient.close()
     }
+
+    /**
+     * Reads one NDJSON envelope per line off [channel], emits any content
+     * deltas, and stops at end-of-stream or the envelope with `done=true`.
+     */
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<String>.emitChunks(channel: io.ktor.utils.io.ByteReadChannel) {
+        var done = false
+        while (!done) {
+            val line = channel.readUTF8Line() ?: return
+            if (line.isBlank()) continue
+            val envelope = parseEnvelopeOrFail(line)
+            if (envelope.message.content.isNotEmpty()) emit(envelope.message.content)
+            done = envelope.done
+        }
+    }
+
+    private fun parseEnvelopeOrFail(line: String): OllamaChatResponse =
+        try {
+            JSON.decodeFromString(OllamaChatResponse.serializer(), line)
+        } catch (cause: SerializationException) {
+            throw AiUnavailableException("Ollama streamed a malformed envelope: ${cause.message}", cause)
+        }
 
     private suspend fun sendChat(
         systemPrompt: String,
@@ -84,26 +163,12 @@ class OllamaClient(
             httpClient.post("${config.baseUrl.trimEnd('/')}/api/chat") {
                 contentType(ContentType.Application.Json)
                 setBody(
-                    OllamaChatRequest(
-                        model = config.model,
-                        messages =
-                            listOf(
-                                OllamaMessage(role = "system", content = systemPrompt),
-                                OllamaMessage(
-                                    role = "user",
-                                    content = userPrompt,
-                                    images =
-                                        if (inputs.isEmpty()) {
-                                            null
-                                        } else {
-                                            inputs.map { Base64.getEncoder().encodeToString(it) }
-                                        },
-                                ),
-                            ),
-                        format = responseFormat,
-                        stream = false,
-                        options = GEMMA4_SAMPLING,
-                        keepAlive = config.keepAlive,
+                    buildChatRequest(
+                        systemPrompt = systemPrompt,
+                        userPrompt = userPrompt,
+                        responseFormat = responseFormat,
+                        inputs = inputs,
+                        streaming = false,
                     ),
                 )
             }
@@ -112,6 +177,35 @@ class OllamaClient(
         } catch (cause: HttpRequestTimeoutException) {
             throw AiUnavailableException("Ollama timed out: ${cause.message}", cause)
         }
+
+    private fun buildChatRequest(
+        systemPrompt: String,
+        userPrompt: String,
+        responseFormat: JsonObject,
+        inputs: List<ByteArray>,
+        streaming: Boolean,
+    ): OllamaChatRequest =
+        OllamaChatRequest(
+            model = config.model,
+            messages =
+                listOf(
+                    OllamaMessage(role = "system", content = systemPrompt),
+                    OllamaMessage(
+                        role = "user",
+                        content = userPrompt,
+                        images =
+                            if (inputs.isEmpty()) {
+                                null
+                            } else {
+                                inputs.map { Base64.getEncoder().encodeToString(it) }
+                            },
+                    ),
+                ),
+            format = responseFormat,
+            stream = streaming,
+            options = GEMMA4_SAMPLING,
+            keepAlive = config.keepAlive,
+        )
 
     private fun HttpStatusCode.isSuccessfulOllamaStatus(): Boolean = value in HTTP_OK..HTTP_OK_MAX
 

@@ -28,6 +28,7 @@ object ApiRoutes {
 
     object Parse {
         const val TEXT = "$BASE/parse/text"
+        const val TEXT_STREAM = "$BASE/parse/text/stream"
         const val AUDIO = "$BASE/parse/audio"
         const val RECEIPT = "$BASE/parse/receipt"
     }

@@ -20,6 +20,7 @@ import com.vstorchevyi.skilky.support.useTestConfig
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.mock.MockEngine
@@ -31,6 +32,7 @@ import io.ktor.client.request.forms.formData
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
@@ -176,6 +178,38 @@ class ParseRoutesIntegrationTest {
         }
 
     @Test
+    fun `parse text stream emits token events and a final done event with parsed items`() =
+        runParseTest(installFakeService(stubItemsStreamed())) { sut ->
+            val response =
+                sut.post(ApiRoutes.Parse.TEXT_STREAM) {
+                    contentType(ContentType.Application.Json)
+                    bearerAuth(aValidToken())
+                    setBody(ParseTextRequest(text = "milk 45, gym 500", currency = Currency.UAH))
+                }
+
+            response.status shouldBe HttpStatusCode.OK
+            val text = response.bodyAsText()
+            text shouldContain "event: token"
+            text shouldContain "event: done"
+            // The 'done' event's data is the parsed ParseTextResponse.
+            // Two items in the stubbed output should both appear there.
+            text shouldContain "\"Milk\""
+            text shouldContain "\"Gym\""
+        }
+
+    @Test
+    fun `parse text stream unauthenticated is 401`() =
+        runParseTest(installFakeService(stubItemsStreamed())) { sut ->
+            val response =
+                sut.post(ApiRoutes.Parse.TEXT_STREAM) {
+                    contentType(ContentType.Application.Json)
+                    setBody(ParseTextRequest(text = "milk 45", currency = Currency.UAH))
+                }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+
+    @Test
     fun `parse route is not registered when AI override is absent and config has no ai block`() =
         testApplication {
             // No override, no skilky.ai.* keys → service is null → route absent → 404.
@@ -228,6 +262,42 @@ class ParseRoutesIntegrationTest {
                 attributes.put(TextParsingServiceOverrideKey, service)
             }
         }
+
+    private fun stubItemsStreamed(): MockEngine {
+        val content =
+            """{"items":[
+              {"name":"Milk","amount":45.0,"suggestedCategoryName":"Food","confidence":0.95},
+              {"name":"Gym","amount":500.0,"suggestedCategoryName":"Gym","confidence":0.9}
+            ]}"""
+        // Ollama streams NDJSON: one envelope per chunk, each carrying the
+        // delta in message.content, terminated by an envelope with done=true.
+        // Three chunks here is enough to exercise concatenation in the route.
+        val ndjson =
+            buildString {
+                val first = content.substring(0, content.length / 2)
+                val rest = content.substring(content.length / 2)
+                appendStreamEnvelope(content = first, done = false)
+                appendStreamEnvelope(content = rest, done = false)
+                appendStreamEnvelope(content = "", done = true)
+            }
+        return MockEngine {
+            respond(
+                content = ByteReadChannel(ndjson),
+                status = HttpStatusCode.OK,
+                headers = headersOf("Content-Type", "application/x-ndjson"),
+            )
+        }
+    }
+
+    private fun StringBuilder.appendStreamEnvelope(
+        content: String,
+        done: Boolean,
+    ) {
+        append("""{"model":"gemma4:e4b","message":{"role":"assistant","content":""")
+        append(Json.encodeToString(String.serializer(), content))
+        append("""},"done":$done}""")
+        append('\n')
+    }
 
     private fun stubItemsJson(): MockEngine {
         val content =

@@ -5,6 +5,8 @@ import com.vstorchevyi.skilky.api.ParseTextRequest
 import com.vstorchevyi.skilky.api.ParseTextResponse
 import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.errors.AiUnavailableException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -47,6 +49,44 @@ class TextParsingService(
             )
         return raw.decodeResponse(request.currency, categories)
     }
+
+    /**
+     * Streaming counterpart of [parseText]. Emits one [ParseStreamEvent.Token]
+     * per incremental token chunk from Ollama, then a final
+     * [ParseStreamEvent.Done] carrying the fully parsed [ParseTextResponse].
+     *
+     * The service stays HTTP/SSE-agnostic: the route layer decides how to
+     * surface the events on the wire (Server-Sent Events, WebSocket,
+     * chunked transfer, etc.). Errors propagate by throwing into the flow.
+     */
+    fun streamParseText(
+        request: ParseTextRequest,
+        userId: Long,
+    ): Flow<ParseStreamEvent> =
+        flow {
+            val categories = loadCategories(userId)
+            val buffer = StringBuilder()
+            ollamaClient
+                .streamChat(
+                    systemPrompt = PromptTemplates.systemPromptText(categories),
+                    userPrompt = PromptTemplates.userPromptText(request.text, request.currency),
+                    responseFormat = PromptTemplates.responseSchemaText,
+                ).collect { chunk ->
+                    buffer.append(chunk)
+                    emit(ParseStreamEvent.Token(chunk))
+                }
+            val raw =
+                try {
+                    OllamaClient.JSON.parseToJsonElement(buffer.toString()) as? JsonObject
+                        ?: throw AiUnavailableException("Streamed content was not a JSON object")
+                } catch (cause: SerializationException) {
+                    throw AiUnavailableException(
+                        "Streamed content was not valid JSON: ${cause.message}",
+                        cause,
+                    )
+                }
+            emit(ParseStreamEvent.Done(raw.decodeResponse(request.currency, categories)))
+        }
 
     /**
      * @param audio raw WAV bytes (16 kHz mono, RIFF header). Validation
