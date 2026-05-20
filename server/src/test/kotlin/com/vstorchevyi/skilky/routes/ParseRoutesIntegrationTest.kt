@@ -3,13 +3,13 @@ package com.vstorchevyi.skilky.routes
 import com.vstorchevyi.skilky.ai.CategoryHint
 import com.vstorchevyi.skilky.ai.OllamaClient
 import com.vstorchevyi.skilky.ai.TextParsingService
-import com.vstorchevyi.skilky.ai.TextParsingServiceOverrideKey
 import com.vstorchevyi.skilky.api.ApiErrorResponse
 import com.vstorchevyi.skilky.api.ApiRoutes
 import com.vstorchevyi.skilky.api.Currency
 import com.vstorchevyi.skilky.api.ParseTextRequest
 import com.vstorchevyi.skilky.api.ParseTextResponse
 import com.vstorchevyi.skilky.config.AppConfig
+import com.vstorchevyi.skilky.di.TestKoinModulesKey
 import com.vstorchevyi.skilky.module
 import com.vstorchevyi.skilky.plugins.ParseRateLimitOverrideKey
 import com.vstorchevyi.skilky.security.JwtTokenProvider
@@ -43,6 +43,7 @@ import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import org.koin.dsl.module
 import kotlin.test.Test
 
 /**
@@ -225,7 +226,11 @@ class ParseRoutesIntegrationTest {
                         ollamaClient = client,
                         loadCategories = { _ -> STUB_CATEGORIES },
                     )
-                attributes.put(TextParsingServiceOverrideKey, service)
+                val testModule =
+                    module {
+                        single<TextParsingService> { service }
+                    }
+                attributes.put(TestKoinModulesKey, listOf(testModule))
             }
         }
 

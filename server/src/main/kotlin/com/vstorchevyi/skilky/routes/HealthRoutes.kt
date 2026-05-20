@@ -8,16 +8,19 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import org.koin.ktor.ext.getKoin
+import org.koin.ktor.ext.inject
 
-fun Route.healthRoutes(
-    appConfig: AppConfig,
-    databaseFactory: DatabaseFactory?,
-) {
+fun Route.healthRoutes() {
+    val apiConfig: AppConfig.ApiConfig by inject()
+    val apiVersion = apiConfig.version
+    val databaseFactory = getKoin().getOrNull<DatabaseFactory>()
+
     get(ApiRoutes.HEALTH) {
         call.respond(
             HealthResponse(
                 status = "ok",
-                version = appConfig.api.version,
+                version = apiVersion,
             ),
         )
     }
@@ -30,7 +33,7 @@ fun Route.healthRoutes(
                 httpStatus,
                 HealthResponse(
                     status = if (connected) "ok" else "degraded",
-                    version = appConfig.api.version,
+                    version = apiVersion,
                     db = if (connected) "connected" else "disconnected",
                 ),
             )

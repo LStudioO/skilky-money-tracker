@@ -23,6 +23,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
+import org.koin.ktor.ext.inject
 
 /**
  * JWT-protected expense list, batch create, update, and delete under
@@ -32,7 +33,8 @@ import io.ktor.server.routing.route
  * **Batch POST:** idempotent per [com.vstorchevyi.skilky.api.ExpenseRequest.clientId] — safe for
  * offline sync retries (see repository KDoc).
  */
-fun Route.expenseRoutes(expenseRepository: ExpenseRepository) {
+fun Route.expenseRoutes() {
+    val expenseRepository: ExpenseRepository by inject()
     authenticate(jwtAuthName()) {
         route(ApiRoutes.Expenses.ROOT) {
             expenseGetList(expenseRepository)
