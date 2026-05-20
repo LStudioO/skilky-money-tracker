@@ -5,6 +5,7 @@ import com.vstorchevyi.skilky.api.DefaultCategoryTranslations
 import com.vstorchevyi.skilky.config.AppConfig
 import com.vstorchevyi.skilky.db.tables.CategoriesTable
 import com.vstorchevyi.skilky.db.tables.ExpensesTable
+import com.vstorchevyi.skilky.db.tables.ParseCorrectionsTable
 import com.vstorchevyi.skilky.db.tables.RefreshTokensTable
 import com.vstorchevyi.skilky.db.tables.UsersTable
 import com.zaxxer.hikari.HikariConfig
@@ -50,7 +51,13 @@ class DatabaseFactory(
         dataSource = HikariDataSource(buildHikariConfig())
         database = Database.connect(dataSource)
         transaction(database) {
-            SchemaUtils.create(UsersTable, RefreshTokensTable, CategoriesTable, ExpensesTable)
+            SchemaUtils.create(
+                UsersTable,
+                RefreshTokensTable,
+                CategoriesTable,
+                ExpensesTable,
+                ParseCorrectionsTable,
+            )
             seedSystemCategoriesIfEmpty()
         }
     }

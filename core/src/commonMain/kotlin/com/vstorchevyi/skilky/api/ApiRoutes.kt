@@ -30,5 +30,6 @@ object ApiRoutes {
         const val TEXT = "$BASE/parse/text"
         const val AUDIO = "$BASE/parse/audio"
         const val RECEIPT = "$BASE/parse/receipt"
+        const val CORRECTIONS = "$BASE/parse/corrections"
     }
 }
