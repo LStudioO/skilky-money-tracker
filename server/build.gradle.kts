@@ -19,6 +19,10 @@ kover {
                     // Exposed Table singletons are declarative column
                     // descriptions; nothing branches in them.
                     "com.vstorchevyi.skilky.db.tables.*",
+                    // Eval harness runs against a real Ollama outside the
+                    // unit-test path. Coverage here would always be 0 in
+                    // CI; signal lives in the eval task's own pass/fail.
+                    "com.vstorchevyi.skilky.eval.*",
                 )
             }
         }
@@ -33,6 +37,20 @@ application {
 
     val isDevelopment: Boolean = project.ext.has("development")
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
+}
+
+// Eval harness. Runs the model against [EvalFixtures] and fails on F1
+// regression. Lives outside :server:test because it hits a real Ollama;
+// invoke explicitly when iterating on prompts or models.
+//
+// Usage:
+//   AI_BASE_URL=http://localhost:11434 AI_MODEL=gemma4:e4b ./gradlew :server:evalTest
+tasks.register<JavaExec>("evalTest") {
+    description = "Grade [EvalFixtures] against a real Ollama and exit 1 on regression."
+    group = "verification"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.vstorchevyi.skilky.eval.EvalRunnerKt")
+    standardInput = System.`in`
 }
 
 dependencies {
