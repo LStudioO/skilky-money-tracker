@@ -3,13 +3,17 @@ package com.vstorchevyi.skilky.routes
 import com.vstorchevyi.skilky.ai.TextParsingService
 import com.vstorchevyi.skilky.api.ApiRoutes
 import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.ParseCorrectionRequest
 import com.vstorchevyi.skilky.api.ParseTextRequest
+import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.errors.ValidationException
 import com.vstorchevyi.skilky.plugins.ParseRateLimit
 import com.vstorchevyi.skilky.plugins.jwtAuthName
+import com.vstorchevyi.skilky.repository.ParseCorrectionsRepository
 import com.vstorchevyi.skilky.security.validateParseAudioBytes
 import com.vstorchevyi.skilky.security.validateParseReceiptBytes
 import com.vstorchevyi.skilky.security.validateParseTextRequest
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.MultiPartData
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
@@ -23,6 +27,8 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import io.ktor.utils.io.toByteArray
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 /**
  * JWT-protected parse endpoints at
@@ -74,6 +80,44 @@ fun Route.parseRoutes(textParsingService: TextParsingService) {
         }
     }
 }
+
+/**
+ * JWT-protected `POST /parse/corrections`. Records the model's parse
+ * output alongside what the user actually saved, so prompt regressions
+ * can be quantified later. Lightweight insert; rate-limited under the
+ * same bucket as the parse routes to avoid a separate budget.
+ */
+fun Route.parseCorrectionsRoutes(repository: ParseCorrectionsRepository) {
+    authenticate(jwtAuthName()) {
+        rateLimit(ParseRateLimit) {
+            route(ApiRoutes.Parse.CORRECTIONS) {
+                post {
+                    val user = call.requireJwtPrincipal()
+                    val body = call.receive<ParseCorrectionRequest>()
+                    if (body.original.isEmpty()) {
+                        throw ValidationException("'original' must not be empty")
+                    }
+                    repository.insert(
+                        userId = user.userId,
+                        modality = body.modality,
+                        currency = body.currency,
+                        itemsOriginalJson = CORRECTION_JSON.encodeToString(ITEMS_SERIALIZER, body.original),
+                        itemsFinalJson = CORRECTION_JSON.encodeToString(ITEMS_SERIALIZER, body.final),
+                    )
+                    call.respond(HttpStatusCode.NoContent)
+                }
+            }
+        }
+    }
+}
+
+private val ITEMS_SERIALIZER = ListSerializer(ParsedExpenseItem.serializer())
+
+private val CORRECTION_JSON =
+    Json {
+        encodeDefaults = true
+        explicitNulls = false
+    }
 
 private data class ParseFormParts(
     val fileBytes: ByteArray?,

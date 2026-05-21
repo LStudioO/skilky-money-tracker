@@ -18,6 +18,7 @@ import com.vstorchevyi.skilky.plugins.configureSerialization
 import com.vstorchevyi.skilky.plugins.configureStatusPages
 import com.vstorchevyi.skilky.repository.CategoryRepository
 import com.vstorchevyi.skilky.repository.ExpenseRepository
+import com.vstorchevyi.skilky.repository.ParseCorrectionsRepository
 import com.vstorchevyi.skilky.repository.RefreshTokenRepository
 import com.vstorchevyi.skilky.repository.UserRepository
 import com.vstorchevyi.skilky.security.JwtTokenProvider
@@ -59,6 +60,7 @@ fun Application.module() {
     val refreshTokenRepository = databaseFactory?.let { RefreshTokenRepository(it, tokenHasher) }
     val categoryRepository = databaseFactory?.let { CategoryRepository(it) }
     val expenseRepository = databaseFactory?.let { ExpenseRepository(it) }
+    val parseCorrectionsRepository = databaseFactory?.let { ParseCorrectionsRepository(it) }
     val textParsingService =
         parseServiceOverride() ?: buildTextParsingService(appConfig.ai, categoryRepository)
 
@@ -76,6 +78,7 @@ fun Application.module() {
         refreshTokenRepository = refreshTokenRepository,
         categoryRepository = categoryRepository,
         expenseRepository = expenseRepository,
+        parseCorrectionsRepository = parseCorrectionsRepository,
         textParsingService = textParsingService,
         passwordHasher = passwordHasher,
         tokenProvider = tokenProvider,

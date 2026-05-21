@@ -1,5 +1,6 @@
 package com.vstorchevyi.skilky.api
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -58,4 +59,36 @@ data class ParseTextResponse(
     val items: List<ParsedExpenseItem>,
     val transcript: String? = null,
     val rawText: String? = null,
+)
+
+/** Which parse endpoint produced the items being corrected. */
+@Serializable
+enum class ParseModality {
+    @SerialName("text")
+    TEXT,
+
+    @SerialName("audio")
+    AUDIO,
+
+    @SerialName("receipt")
+    RECEIPT,
+}
+
+/**
+ * Captures what the model returned vs. what the user actually saved after
+ * editing the preview. Feeds prompt iteration: items the user changes
+ * significantly are the ground truth that the model got it wrong.
+ *
+ * [original] is the unedited [ParseTextResponse.items] the parse endpoint
+ * returned. [final] is what the user kept (possibly empty if they discarded
+ * everything, possibly with renamed items, edited amounts, or reassigned
+ * categories). Both lists are recorded verbatim so the diff is recoverable
+ * later without re-deriving it on the client.
+ */
+@Serializable
+data class ParseCorrectionRequest(
+    val modality: ParseModality,
+    val currency: Currency,
+    val original: List<ParsedExpenseItem>,
+    val final: List<ParsedExpenseItem>,
 )
