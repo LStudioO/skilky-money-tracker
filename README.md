@@ -7,6 +7,39 @@ Skilky is a budget tracker for people who will not open a spreadsheet. You log s
 
 **Status:** Product spec and roadmap live under [`docs/`](docs/). The app code is still mostly skeleton work.
 
+## Quickstart
+
+Goal: `curl localhost:8080/health` returns `{"status":"ok"}` on a fresh clone.
+
+Prereqs: JDK 21, Docker, ~10 GB free disk for the model and the DB.
+
+Start Postgres, Ollama, and the one-shot model pull:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+The `ollama-pull` container downloads `gemma4:e4b` (~5 GB) on first run, then exits. Tail it until it does:
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f ollama-pull
+```
+
+Then run the server:
+
+```bash
+./gradlew :server:run
+```
+
+And the smoke test, in another terminal:
+
+```bash
+curl localhost:8080/health
+# {"status":"ok"}
+```
+
+`application.conf` ships dev defaults that match the docker-compose values, so no env vars are needed locally. For production, set `JWT_SECRET`, `REFRESH_TOKEN_PEPPER`, and `POSTGRES_PASSWORD` at minimum. Full env reference: [`docs/deployment.md`](docs/deployment.md).
+
 ## Project layout
 
 ```
