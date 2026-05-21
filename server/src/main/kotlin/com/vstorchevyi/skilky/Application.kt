@@ -5,6 +5,7 @@ import com.vstorchevyi.skilky.ai.CategoryHint
 import com.vstorchevyi.skilky.ai.OllamaClient
 import com.vstorchevyi.skilky.ai.TextParsingService
 import com.vstorchevyi.skilky.ai.parseServiceOverride
+import com.vstorchevyi.skilky.ai.warnIfLowMemory
 import com.vstorchevyi.skilky.config.AppConfig
 import com.vstorchevyi.skilky.db.DatabaseFactory
 import com.vstorchevyi.skilky.plugins.configureCallId
@@ -40,6 +41,7 @@ import io.ktor.server.application.ApplicationStopped
  */
 fun Application.module() {
     val appConfig = AppConfig.from(environment.config)
+    warnIfLowMemory(appConfig.ai)
 
     val databaseFactory =
         appConfig.database?.let { dbConfig ->
