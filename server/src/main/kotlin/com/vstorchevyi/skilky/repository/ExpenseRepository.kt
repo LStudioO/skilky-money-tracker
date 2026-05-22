@@ -6,6 +6,7 @@ import com.vstorchevyi.skilky.db.tables.CategoriesTable
 import com.vstorchevyi.skilky.db.tables.ExpensesTable
 import com.vstorchevyi.skilky.domain.model.CategoryRecord
 import com.vstorchevyi.skilky.domain.model.ExpenseRecord
+import com.vstorchevyi.skilky.errors.ConflictException
 import com.vstorchevyi.skilky.errors.ValidationException
 import kotlinx.datetime.LocalDate
 import org.jetbrains.exposed.v1.core.Op
@@ -263,18 +264,26 @@ class ExpenseRepository(
             val cat =
                 findAccessibleCategory(req.categoryId, userId)
                     ?: throw ValidationException("Unknown category id ${req.categoryId}")
-            ExpensesTable.update({
-                (ExpensesTable.id eq expenseId) and (ExpensesTable.userId eq userId)
-            }) {
-                it[ExpensesTable.categoryId] = req.categoryId
-                it[ExpensesTable.name] = req.name.trim()
-                it[ExpensesTable.amount] = amountOf(req.amount)
-                it[ExpensesTable.currency] = req.currency.code
-                it[ExpensesTable.note] = req.note?.trim()?.takeIf { s -> s.isNotEmpty() }
-                it[ExpensesTable.inputType] = req.inputType.name
-                it[ExpensesTable.clientId] = req.clientId.trim()
-                it[ExpensesTable.date] = req.date
-                it[ExpensesTable.updatedAt] = Clock.System.now()
+            try {
+                ExpensesTable.update({
+                    (ExpensesTable.id eq expenseId) and (ExpensesTable.userId eq userId)
+                }) {
+                    it[ExpensesTable.categoryId] = req.categoryId
+                    it[ExpensesTable.name] = req.name.trim()
+                    it[ExpensesTable.amount] = amountOf(req.amount)
+                    it[ExpensesTable.currency] = req.currency.code
+                    it[ExpensesTable.note] = req.note?.trim()?.takeIf { s -> s.isNotEmpty() }
+                    it[ExpensesTable.inputType] = req.inputType.name
+                    it[ExpensesTable.clientId] = req.clientId.trim()
+                    it[ExpensesTable.date] = req.date
+                    it[ExpensesTable.updatedAt] = Clock.System.now()
+                }
+            } catch (e: ExposedSQLException) {
+                // Editing an expense onto a clientId another of the user's
+                // rows already holds trips the unique (user_id, client_id)
+                // index. Surface a 409 rather than a 500 from the raw error.
+                if (e.sqlState != SQL_STATE_UNIQUE_VIOLATION) throw e
+                throw ConflictException("clientId ${req.clientId.trim()} already belongs to another expense")
             }
             val row =
                 ExpensesTable

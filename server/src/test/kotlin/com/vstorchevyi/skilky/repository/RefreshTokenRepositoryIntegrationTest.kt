@@ -107,6 +107,25 @@ class RefreshTokenRepositoryIntegrationTest {
     }
 
     @Test
+    fun `create purges the user's already-expired tokens`() {
+        runBlocking {
+            // Arrange — one token, then backdated past its expiry
+            val sut = createSut()
+            val user = givenUser("vlad@example.com")
+            sut.create(userId = user.id, ttlDays = 1)
+            backdateTokensFor(user.id, daysAgo = 2)
+
+            // Act — a second create should sweep the expired row first
+            sut.create(userId = user.id, ttlDays = 90)
+
+            // Assert
+            withClue("the expired token is purged, leaving only the fresh one") {
+                countTokensFor(user.id) shouldBe 1L
+            }
+        }
+    }
+
+    @Test
     fun `delete removes the row`() {
         runBlocking {
             // Arrange
@@ -172,6 +191,14 @@ class RefreshTokenRepositoryIntegrationTest {
                 .selectAll()
                 .where { RefreshTokensTable.userId eq userId }
                 .single()[RefreshTokensTable.token]
+        }
+
+    private suspend fun countTokensFor(userId: Long): Long =
+        factory.dbQuery {
+            RefreshTokensTable
+                .selectAll()
+                .where { RefreshTokensTable.userId eq userId }
+                .count()
         }
 
     private suspend fun backdateTokensFor(

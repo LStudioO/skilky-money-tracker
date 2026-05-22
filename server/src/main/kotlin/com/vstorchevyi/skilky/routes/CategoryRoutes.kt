@@ -1,5 +1,6 @@
 package com.vstorchevyi.skilky.routes
 
+import com.vstorchevyi.skilky.ai.CachedCategoryLoader
 import com.vstorchevyi.skilky.api.ApiRoutes
 import com.vstorchevyi.skilky.api.CreateCategoryRequest
 import com.vstorchevyi.skilky.api.UpdateCategoryRequest
@@ -19,6 +20,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
+import org.koin.ktor.ext.getKoin
 import org.koin.ktor.ext.inject
 
 /**
@@ -30,12 +32,16 @@ import org.koin.ktor.ext.inject
  */
 fun Route.categoryRoutes() {
     val categoryRepository: CategoryRepository by inject()
+    // Null when the server has no AI block configured; the parse cache only
+    // exists alongside the parse routes. Mutations invalidate it when present
+    // so a changed category reaches parse suggestions without the TTL delay.
+    val categoryCache: CachedCategoryLoader? = getKoin().getOrNull()
     authenticate(jwtAuthName()) {
         route(ApiRoutes.Categories.ROOT) {
             categoryGetList(categoryRepository)
-            categoryPost(categoryRepository)
-            categoryPut(categoryRepository)
-            categoryDelete(categoryRepository)
+            categoryPost(categoryRepository, categoryCache)
+            categoryPut(categoryRepository, categoryCache)
+            categoryDelete(categoryRepository, categoryCache)
         }
     }
 }
@@ -49,7 +55,10 @@ private fun Route.categoryGetList(categoryRepository: CategoryRepository) {
     }
 }
 
-private fun Route.categoryPost(categoryRepository: CategoryRepository) {
+private fun Route.categoryPost(
+    categoryRepository: CategoryRepository,
+    categoryCache: CachedCategoryLoader?,
+) {
     post {
         val user = call.requireJwtPrincipal()
         val body = call.receive<CreateCategoryRequest>()
@@ -61,11 +70,15 @@ private fun Route.categoryPost(categoryRepository: CategoryRepository) {
                 icon = body.icon.trim(),
                 color = body.color.trim(),
             )
+        categoryCache?.invalidate(user.userId)
         call.respond(HttpStatusCode.Created, created.toDto(call.requestLanguageTag()))
     }
 }
 
-private fun Route.categoryPut(categoryRepository: CategoryRepository) {
+private fun Route.categoryPut(
+    categoryRepository: CategoryRepository,
+    categoryCache: CachedCategoryLoader?,
+) {
     put("{id}") {
         val user = call.requireJwtPrincipal()
         val id =
@@ -82,11 +95,15 @@ private fun Route.categoryPut(categoryRepository: CategoryRepository) {
                 icon = body.icon.trim(),
                 color = body.color.trim(),
             ) ?: throw NotFoundException("Category not found")
+        categoryCache?.invalidate(user.userId)
         call.respond(updated.toDto(call.requestLanguageTag()))
     }
 }
 
-private fun Route.categoryDelete(categoryRepository: CategoryRepository) {
+private fun Route.categoryDelete(
+    categoryRepository: CategoryRepository,
+    categoryCache: CachedCategoryLoader?,
+) {
     delete("{id}") {
         val user = call.requireJwtPrincipal()
         val id =
@@ -96,6 +113,7 @@ private fun Route.categoryDelete(categoryRepository: CategoryRepository) {
         if (!categoryRepository.deleteCustomIfOwned(user.userId, id)) {
             throw NotFoundException("Category not found")
         }
+        categoryCache?.invalidate(user.userId)
         call.respond(HttpStatusCode.NoContent)
     }
 }

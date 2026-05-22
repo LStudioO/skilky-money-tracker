@@ -30,6 +30,11 @@ fun validateExpenseRequest(req: ExpenseRequest) {
 
 /**
  * Validates a batch envelope and each nested item via [validateExpenseRequest].
+ *
+ * `clientId` must be unique within the batch. Two items sharing one would both
+ * map to the same `(user_id, client_id)` row: the first inserts, the second is
+ * coalesced into it, and the second item's data is lost without an error.
+ * Reject it up front instead.
  */
 fun validateExpenseBatch(req: ExpenseBatchRequest) {
     if (req.items.isEmpty()) {
@@ -39,6 +44,10 @@ fun validateExpenseBatch(req: ExpenseBatchRequest) {
         throw ValidationException("At most $MAX_BATCH items per request")
     }
     req.items.forEach(::validateExpenseRequest)
+    val clientIds = req.items.map { it.clientId.trim() }
+    if (clientIds.size != clientIds.toSet().size) {
+        throw ValidationException("Each item in a batch must have a distinct clientId")
+    }
 }
 
 private val HEX_COLOR = Regex("^#[0-9A-Fa-f]{6}$")
