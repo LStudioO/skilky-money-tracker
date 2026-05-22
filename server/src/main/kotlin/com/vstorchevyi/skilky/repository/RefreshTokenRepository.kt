@@ -8,6 +8,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -26,18 +27,29 @@ class RefreshTokenRepository(
     private val databaseFactory: DatabaseFactory,
     private val tokenHasher: TokenHasher,
 ) {
-    /** Issue and persist a new refresh token. Returns the raw value to send to the client. */
+    /**
+     * Issue and persist a new refresh token. Returns the raw value to send to
+     * the client.
+     *
+     * Also drops [userId]'s already-expired tokens. Rotation deletes consumed
+     * tokens, but one that expires unused (a device that logged in once and
+     * never refreshed) would otherwise linger forever. Purging on each
+     * authentication keeps the table bounded without a scheduled job.
+     */
     suspend fun create(
         userId: Long,
         ttlDays: Int,
     ): String =
         databaseFactory.dbQuery {
+            val now = Clock.System.now()
+            RefreshTokensTable.deleteWhere {
+                (RefreshTokensTable.userId eq userId) and (RefreshTokensTable.expiresAt less now)
+            }
             val raw = UUID.randomUUID().toString()
-            val expiresAt = Clock.System.now().plus(ttlDays.days)
             RefreshTokensTable.insert {
                 it[RefreshTokensTable.userId] = userId
                 it[RefreshTokensTable.token] = tokenHasher.hash(raw)
-                it[RefreshTokensTable.expiresAt] = expiresAt
+                it[RefreshTokensTable.expiresAt] = now.plus(ttlDays.days)
             }
             raw
         }
