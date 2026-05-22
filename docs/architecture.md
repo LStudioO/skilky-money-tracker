@@ -17,8 +17,7 @@ graph TB
             P[(PostgreSQL)]
         end
         subgraph AI
-            O[Ollama]
-            W[Whisper]
+            O[Ollama gemma4:e4b]
         end
     end
 
@@ -26,14 +25,12 @@ graph TB
     I -- HTTPS --> K
     K -- JDBC --> P
     K -- HTTP --> O
-    K -- HTTP --> W
 
     style A fill:#4CAF50,color:#fff
     style I fill:#2196F3,color:#fff
     style K fill:#FF9800,color:#fff
     style P fill:#9C27B0,color:#fff
     style O fill:#F44336,color:#fff
-    style W fill:#F44336,color:#fff
 ```
 
 
@@ -80,39 +77,42 @@ graph LR
 
 
 
-### Module Details
+### Module details
 
-#### :shared:models
+#### `:core`
 
-- **Dependencies:** kotlinx-serialization, kotlinx-datetime only
-- **Contents:** All DTOs (request/response), enums (Currency, InputType), ApiRoutes constants, shared validation
-- **Validation:** Value classes with `require()` for domain types (e.g. `Email`, password strength rules). Shared between client and server — validate once, enforce everywhere.
-- **Targets:** commonMain only (pure Kotlin, no platform code)
-- **Purpose:** API contract that both client and server import — ensures they can never drift
+- Dependencies: kotlinx-serialization, kotlinx-datetime.
+- Contents: request/response DTOs, enums (`Currency`, `InputType`, `ParseModality`, `TrendGranularity`), `ApiRoutes` path constants, the `ApiErrorResponse` envelope, default-category data and translations.
+- Targets: commonMain only, pure Kotlin.
+- Purpose: the API contract that `:server` and `:app:shared` both import, so the two cannot drift.
 
-#### :shared:core
+#### `:server`
 
-- **Dependencies:** :shared:models, kotlinx-coroutines, kotlinx-datetime
-- **Contents:** CurrencyFormatter, DateUtils, AppResult sealed class, localization StringKeys
-- **Targets:** commonMain only
-- **Purpose:** Business logic shared between client and server
+- Dependencies: `:core`, Ktor Server, Exposed, HikariCP, Koin, the PostgreSQL driver.
+- Targets: JVM only.
+- Purpose: the backend API and AI orchestration.
 
-#### :composeApp
+#### `:app:shared`
 
-- **Dependencies:** :shared:core, Room KMP, Ktor Client, Koin, Navigation Compose, Coil, Compose MP
-- **Targets:** androidMain, iosMain
-- **expect/actual:** DatabaseFactory, NetworkMonitor, AudioRecorder
-- **Purpose:** The mobile app
+- Dependencies today: `:core`, Compose Multiplatform, lifecycle-viewmodel.
+- Targets: androidMain, iosMain, with a jvmMain entry for desktop hot reload.
+- Purpose: the shared client UI, built as an Android library and an iOS framework. The networking, local-storage, and DI layers described under Client Architecture are the planned design; this module currently holds Compose scaffolding only.
 
-#### :server
+#### `:app:androidApp` and `:app:desktopApp`
 
-- **Dependencies:** :shared:core, Ktor Server, Exposed, Koin, PostgreSQL driver
-- **Targets:** JVM only
-- **Purpose:** Backend API + AI orchestration
+- Thin entry points that host `:app:shared`. The desktop app exists for Compose Hot Reload while editing shared UI.
+
+#### `:build-logic`
+
+- Convention plugins (`skilky.kotlin-jvm`, `skilky.kotlin-multiplatform`, `skilky.android-app`, `skilky.detekt`, `skilky.spotless`) applied across the other modules.
 
 ---
 
 ## Client Architecture
+
+The client is not built yet. Per `docs/implementation-phases.md` the backend is
+through Phase 7; `:app:shared` still holds the Compose Multiplatform template.
+This section is the intended design, not the current state.
 
 ### MVI Pattern (Model-View-Intent)
 
@@ -141,7 +141,7 @@ The ViewModel exposes `StateFlow<State>` and `Channel<SideEffect>`. The Screen c
 ### Package Structure
 
 ```
-composeApp/src/commonMain/kotlin/dev/skilky/tracker/app/
+app/shared/src/commonMain/kotlin/com/vstorchevyi/skilky/
 ├── App.kt                          # Root composable, theme, nav host
 ├── di/                              # Koin modules
 ├── navigation/                      # NavHost, Screen sealed class
@@ -247,45 +247,44 @@ API calls are wrapped in `AppResult<T>` (sealed class in `:shared:core`):
 ### Package Structure
 
 ```
-server/src/main/kotlin/dev/skilky/tracker/server/
-├── Application.kt                  # fun main(), embeddedServer(Netty)
-├── config/                          # AppConfig, DatabaseConfig, JwtConfig
-├── plugins/                         # Ktor plugins (Routing, Auth, CORS, etc.)
-├── routes/                          # Route definitions by feature
-├── service/                         # Business logic
-│   └── ai/                          # AI service abstraction
-├── repository/                      # Data access layer
-├── db/tables/                       # Exposed table definitions
-├── security/                        # Password hashing, JWT provider
-└── util/                            # Extensions
+server/src/main/kotlin/com/vstorchevyi/skilky/
+├── Application.kt          # module(): installs plugins, registers routes
+├── ai/                     # Ollama client, prompt templates, parsing orchestration
+├── config/                 # typed AppConfig over HOCON
+├── db/                     # DatabaseFactory + Exposed table definitions
+├── di/                     # Koin modules
+├── domain/model/           # internal record types
+├── errors/                 # ApiException hierarchy
+├── eval/                   # offline parse-quality eval harness
+├── plugins/                # one file per Ktor plugin install
+├── repository/             # suspend functions over Exposed
+├── routes/                 # one file per feature group
+└── security/               # password/token hashing, JWT, validators
 ```
 
-### AI Service Layer
+### AI parsing
 
-The server talks to Ollama and Whisper via HTTP (sibling Docker containers).
+The server calls a self-hosted Ollama instance over HTTP. One model
+(`gemma4:e4b`, set via `skilky.ai.model`) handles text, audio, and receipt
+images, so there is no separate speech-to-text or vision service.
 
 ```mermaid
 flowchart LR
     CLIENT[Mobile App] --> KTOR[Ktor Server]
-    KTOR -->|text| OLLAMA[Ollama llama3.2]
-    KTOR -->|image| OLLAMA_V[Ollama LLaVA]
-    KTOR -->|audio| WHISPER[Whisper]
-
-    WHISPER -->|transcript| KTOR
-    KTOR -->|parsed text| OLLAMA
+    KTOR -->|text| OLLAMA[Ollama gemma4:e4b]
+    KTOR -->|audio| OLLAMA
+    KTOR -->|receipt image| OLLAMA
+    OLLAMA -->|parsed items JSON| KTOR
 ```
 
+`TextParsingService` is the single orchestrator behind `/parse/text`,
+`/parse/audio`, and `/parse/receipt`. It builds the prompt, calls `OllamaClient`,
+and maps the model's JSON reply into `ParsedExpenseItem`s. `CachedCategoryLoader`
+feeds the user's categories into the prompt as hints.
 
-
-**AiParsingService interface:**
-
-```
-parseText(text, currency) → List<ParsedExpenseItem>
-parseAudio(audioBytes, language, currency) → ParseResult (transcript + items)
-parseReceipt(imageBytes, currency) → List<ParsedExpenseItem>
-```
-
-Default implementation uses Ollama + Whisper. The interface allows swapping in cloud providers (Gemini, OpenAI) in the future.
+The earlier plan for an `AiParsingService` interface with swappable
+implementations was dropped; there is one concrete service. A cloud-provider
+adapter (Gemini, OpenAI) is tracked as Post-MVP Phase 16.
 
 ---
 
@@ -381,9 +380,7 @@ flowchart LR
     CAM[Camera]
 
     SEND[Send to Backend]
-    WHISPER[Whisper STT]
-    OLLAMA_T[Ollama text]
-    OLLAMA_V[Ollama vision]
+    OLLAMA[Ollama gemma4:e4b]
 
     PREVIEW[Preview Sheet]
     EDIT[Edit items]
@@ -396,12 +393,11 @@ flowchart LR
     INPUT --> CAM
 
     TEXT --> SEND
-    MIC --> WHISPER --> OLLAMA_T
-    SEND --> OLLAMA_T
-    CAM --> OLLAMA_V
+    MIC --> SEND
+    CAM --> SEND
+    SEND --> OLLAMA
 
-    OLLAMA_T --> PREVIEW
-    OLLAMA_V --> PREVIEW
+    OLLAMA --> PREVIEW
 
     PREVIEW --> EDIT
     EDIT --> CONFIRM
@@ -424,28 +420,23 @@ graph TB
             BE[Ktor Backend]
             PG[(PostgreSQL)]
             OL[Ollama]
-            WH[Whisper]
         end
 
         subgraph Volumes
             V1[postgres-data]
             V2[ollama-data]
-            V3[whisper-cache]
         end
     end
 
     DC --> BE
     DC --> PG
     DC --> OL
-    DC --> WH
 
     PG --> V1
     OL --> V2
-    WH --> V3
 
     BE -- JDBC --> PG
     BE -- HTTP --> OL
-    BE -- HTTP --> WH
 
     INTERNET((Internet)) -- 8080 --> BE
 ```

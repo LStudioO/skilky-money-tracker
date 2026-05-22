@@ -198,7 +198,7 @@ Stores raw user input waiting to be sent to the server for AI parsing when back 
 
 ---
 
-## Shared DTOs (:shared:models)
+## Shared DTOs (`:core`)
 
 ### Auth
 
@@ -212,10 +212,15 @@ RefreshRequest(refreshToken: String)
 
 ### Parsing
 
+`ParseTextResponse` is the single response type for all three parse endpoints.
+`transcript` is set only by `/parse/audio`, `rawText` only by `/parse/receipt`.
+
 ```
 ParseTextRequest(text: String, currency: Currency)
-ParsedExpenseItem(name: String, amount: Double, currency: Currency, suggestedCategory: String?, confidence: Float)
-ParseAudioResponse(transcript: String, items: List<ParsedExpenseItem>)
+ParsedExpenseItem(name: String, amount: Double, currency: Currency, suggestedCategoryId: Long?, suggestedCategoryName: String?, confidence: Double)
+ParseTextResponse(items: List<ParsedExpenseItem>, transcript: String?, rawText: String?)
+ParseModality { TEXT, AUDIO, RECEIPT }
+ParseCorrectionRequest(modality: ParseModality, currency: Currency, original: List<ParsedExpenseItem>, final: List<ParsedExpenseItem>)
 ```
 
 ### Expenses
@@ -237,30 +242,28 @@ For system defaults, `nameKey` is a stable slug (see `:core` `DefaultCategoryKey
 
 ### Analytics
 
+`/analytics/breakdown` returns a bare `List<CategoryBreakdownItem>`. `/analytics/monthly`
+and `/analytics/trend` return the wrapper types below.
+
 ```
 MonthlySummaryResponse(year: Int, month: Int, currency: Currency, grandTotal: Double, totalByCategory: List<CategoryTotal>)
 CategoryTotal(category: String, amount: Double)
-CategoryBreakdownResponse(category: String, amount: Double, percentage: Double, count: Int)
-TrendResponse(granularity: String, points: List<TrendPoint>)
+CategoryBreakdownItem(category: String, amount: Double, percentage: Double, count: Int)
+TrendResponse(granularity: TrendGranularity, points: List<TrendPoint>)
 TrendPoint(year: Int?, month: Int?, weekStart: LocalDate?, total: Double)
+TrendGranularity { WEEKLY, MONTHLY }
 ```
 
 ### Domain Types
 
 ```
-enum Currency(code: String, symbol: String) { UAH, USD, EUR, ... }
+enum Currency(code: String, symbol: String) { UAH, USD, EUR, GBP }
 enum InputType { TEXT, AUDIO, IMAGE }
 ```
 
-### Shared Validation
+### Validation
 
-Value classes with `require()` blocks enforce domain rules at construction. Shared between client and server — validated in `:shared:models`, so rules never drift.
-
-```
-value class Email(val value: String) {
-    init { require(value.matches(EMAIL_REGEX) && value.length <= 254) }
-}
-```
+Request validation runs on the server. Route handlers call validator functions in `server/src/main/kotlin/com/vstorchevyi/skilky/security/` (`Validators.kt`, `ExpenseValidators.kt`, `ParseValidators.kt`); a failed check throws `ValidationException`, which the `StatusPages` plugin maps to a 422. The `:core` module holds the DTOs but not the validation logic, so the rules below are enforced server-side only.
 
 | Field | Rule |
 |-------|------|
