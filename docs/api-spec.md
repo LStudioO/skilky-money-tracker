@@ -217,6 +217,38 @@ Requires `Authorization: Bearer <jwt>`. Returns 422 for non-JPEG/PNG input or fi
 
 ---
 
+### POST `/parse/corrections`
+
+Records what a parse endpoint returned against what the user kept after editing
+the preview. Feeds prompt-quality tracking. The response has no body.
+
+Requires `Authorization: Bearer <jwt>`. Rate-limited under the same budget as the
+other parse endpoints. Returns `422 VALIDATION_ERROR` when `original` is empty.
+Returns `404` when the server has no database configured.
+
+**Request:**
+```json
+{
+  "modality": "text",
+  "currency": "UAH",
+  "original": [
+    { "name": "Milk", "amount": 45.0, "currency": "UAH", "suggestedCategoryId": 1, "suggestedCategoryName": "Food", "confidence": 0.95 }
+  ],
+  "final": [
+    { "name": "Oat milk", "amount": 45.0, "currency": "UAH", "suggestedCategoryId": 1, "suggestedCategoryName": "Food", "confidence": 0.95 }
+  ]
+}
+```
+
+`modality` is `text`, `audio`, or `receipt` — which parse endpoint produced the
+items. `original` is the unedited response; `final` is what the user saved, with
+any renamed, re-priced, or recategorized items. `final` may be empty if the user
+discarded everything.
+
+**Response:** `204 No Content`
+
+---
+
 ## Expenses
 
 ### GET `/expenses`
@@ -246,7 +278,7 @@ List expenses with pagination and filtering.
       "category": {
         "id": 1,
         "name": "Food",
-        "icon": "restaurant",
+        "icon": "material:restaurant",
         "color": "#4CAF50"
       },
       "note": null,
@@ -294,7 +326,7 @@ Batch create expenses.
       "name": "Milk",
       "amount": 45.0,
       "currency": "UAH",
-      "category": { "id": 1, "name": "Food", "icon": "restaurant", "color": "#4CAF50" },
+      "category": { "id": 1, "name": "Food", "icon": "material:restaurant", "color": "#4CAF50" },
       "note": null,
       "inputType": "TEXT",
       "date": "2026-03-21",
@@ -373,10 +405,13 @@ Create a custom category.
 ```json
 {
   "name": "Gym",
-  "icon": "fitness_center",
+  "icon": "emoji:💪",
   "color": "#009688"
 }
 ```
+
+Icons are a prefixed string: `material:<name>` for built-in Material icons,
+`emoji:<char>` for an emoji. Custom categories normally use `emoji:`.
 
 **Response (201):** Created category.
 
