@@ -135,6 +135,25 @@ class ExpenseValidatorsTest {
     }
 
     @Test
+    fun `validateExpenseBatch rejects a clientId shared by two items`() {
+        // Arrange — both items carry the same clientId, which would coalesce
+        // into one row and silently drop the second item's data
+        val sharedClientId = UUID.randomUUID().toString()
+        val batch =
+            anExpenseBatchRequest(
+                items =
+                    listOf(
+                        anExpenseRequest(clientId = sharedClientId),
+                        anExpenseRequest(clientId = sharedClientId),
+                    ),
+            )
+
+        // Act + Assert
+        val ex = shouldThrow<ValidationException> { validateExpenseBatch(batch) }
+        ex.message.orEmpty() shouldContain "distinct clientId"
+    }
+
+    @Test
     fun `validateCreateCategory rejects empty name`() {
         // Act + Assert
         shouldThrow<ValidationException> { validateCreateCategory("  ", "icon", "#FFFFFF") }
