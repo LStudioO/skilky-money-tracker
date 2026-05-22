@@ -8,12 +8,14 @@ import com.vstorchevyi.skilky.api.RegisterRequest
 import com.vstorchevyi.skilky.config.AppConfig
 import com.vstorchevyi.skilky.errors.ConflictException
 import com.vstorchevyi.skilky.errors.UnauthorizedException
+import com.vstorchevyi.skilky.plugins.AuthRateLimit
 import com.vstorchevyi.skilky.repository.RefreshTokenRepository
 import com.vstorchevyi.skilky.repository.UserRepository
 import com.vstorchevyi.skilky.security.JwtTokenProvider
 import com.vstorchevyi.skilky.security.PasswordHasher
 import com.vstorchevyi.skilky.security.validateRegisterRequest
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.ratelimit.rateLimit
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -27,9 +29,13 @@ fun Route.authRoutes() {
     val passwordHasher: PasswordHasher by inject()
     val tokenProvider: JwtTokenProvider by inject()
     val deps = AuthDeps(jwtConfig, userRepository, refreshTokenRepository, passwordHasher, tokenProvider)
-    authRegisterRoute(deps)
-    authLoginRoute(deps)
-    authRefreshRoute(deps)
+    // Unauthenticated endpoints, so the limiter keys on client IP; caps
+    // password brute-force and signup spam. See AuthRateLimit.
+    rateLimit(AuthRateLimit) {
+        authRegisterRoute(deps)
+        authLoginRoute(deps)
+        authRefreshRoute(deps)
+    }
 }
 
 private fun Route.authRegisterRoute(deps: AuthDeps) {
