@@ -7,6 +7,7 @@ import com.vstorchevyi.skilky.api.LoginRequest
 import com.vstorchevyi.skilky.api.RefreshRequest
 import com.vstorchevyi.skilky.api.RegisterRequest
 import com.vstorchevyi.skilky.module
+import com.vstorchevyi.skilky.plugins.AuthRateLimitOverrideKey
 import com.vstorchevyi.skilky.support.PostgresContainer
 import com.vstorchevyi.skilky.support.jsonClient
 import com.vstorchevyi.skilky.support.useTestConfigWithDb
@@ -180,6 +181,26 @@ class AuthRoutesIntegrationTest {
             val body = response.body<ApiErrorResponse>()
             body.requestId.shouldNotBeNull()
             body.requestId.shouldNotBeBlank()
+        }
+
+    @Test
+    fun `auth endpoints return 429 once the per-IP budget is spent`() =
+        testApplication {
+            // Arrange — 2 requests per minute; the 3rd from the same client is 429.
+            useTestConfigWithDb()
+            application { attributes.put(AuthRateLimitOverrideKey, 2) }
+            application { module() }
+            val sut = jsonClient()
+
+            // Act — failed logins still consume the budget; that is the brute-force path
+            val first = sut.login("nobody@example.com", "secret123")
+            val second = sut.login("nobody@example.com", "secret123")
+            val third = sut.login("nobody@example.com", "secret123")
+
+            // Assert
+            first.status shouldBe HttpStatusCode.Unauthorized
+            second.status shouldBe HttpStatusCode.Unauthorized
+            third.status shouldBe HttpStatusCode.TooManyRequests
         }
 
     private fun runAuthTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =

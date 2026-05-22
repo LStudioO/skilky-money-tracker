@@ -107,8 +107,8 @@ Trade-off: receipt OCR with 4B vision params is weaker than a dedicated VLM. If 
 | Client DI | Koin | KMP-native, simple, first-class Compose support |
 | Client DB | Room KMP | Familiar to Android devs, stable KMP since 2.8 |
 | Server DB | Exposed + PostgreSQL | Kotlin DSL ORM by JetBrains + production-ready DB |
-| AI hosting | Ollama + Speaches (Docker) | Self-hosted, swappable models, no vendor lock-in |
+| AI hosting | Ollama (Docker) | Self-hosted, one model for all three modalities, no vendor lock-in |
 | Offline strategy | Local queue + sync | Avoids shipping GB-sized AI models to device |
 | Auth | JWT + refresh tokens | Stateless, multi-device, works for self-hosted |
-| Shared code | shared:models + shared:core modules | API contracts never drift, business logic reused |
+| Shared code | single `:core` module | One API-contract module imported by server and client, so the two never drift |
 | Deployment | Docker Compose | One command, everything runs |
