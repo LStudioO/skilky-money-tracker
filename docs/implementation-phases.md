@@ -147,13 +147,18 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 
 **Goal:** App works fully offline, syncs automatically when back online.
 
+> **Update (2026-05):** The server-side dedup landed early, alongside Phase 3.
+> `POST /expenses` already upserts on the `(user_id, client_id)` unique index, so the
+> batch endpoint is the sync endpoint. No separate `POST /expenses/sync` route is needed.
+> Everything left in this phase is client work.
+
 ### Deliverables
 
 - Client: `SyncQueueEntity` + `SyncQueueDao` (Room)
 - Client: Modify `ExpenseRepository` to always write locally first, enqueue sync item
 - Client: `NetworkMonitor` (expect/actual — ConnectivityManager on Android, NWPathMonitor on iOS)
 - Client: `SyncManager` — observe connectivity, process queue FIFO when online
-- Server: `POST /expenses/sync` endpoint with `clientId`-based deduplication (unique index)
+- ~~Server: `POST /expenses/sync` endpoint with `clientId`-based deduplication~~ (the batch `POST /expenses` already deduplicates on the unique index)
 - Client: Pending indicator on unsynced expenses
 - Client: Full sync pull on app launch when online
 
@@ -170,10 +175,16 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 
 **Goal:** Monthly summaries, category breakdowns, trend charts.
 
+> **Update (2026-05):** Server work landed. The planned `AnalyticsService` class
+> was skipped, same call as Phase 4: aggregate SQL lives in `AnalyticsRepository`,
+> trend bucket math is in pure functions in `AnalyticsPeriods.kt`, and the route
+> handlers wire the two together. Amounts are aggregated per currency (no
+> conversion); `currency` defaults to UAH until Phase 8 adds a per-user default.
+
 ### Deliverables
 
-- Shared: `MonthlySummaryResponse`, `CategoryBreakdownResponse`, `TrendPoint`
-- Server: `AnalyticsService` with aggregate SQL queries
+- Shared: `MonthlySummaryResponse`, `CategoryBreakdownItem`, `TrendResponse` / `TrendPoint`
+- Server: `AnalyticsRepository` with aggregate SQL queries
 - Server: `AnalyticsRoutes` — `/analytics/monthly`, `/analytics/breakdown`, `/analytics/trend`
 - Client: `AnalyticsScreen` with period selector
 - Client: `MonthlyChart` — bar or line chart of spending over time

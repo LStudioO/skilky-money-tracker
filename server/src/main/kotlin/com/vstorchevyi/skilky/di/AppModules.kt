@@ -6,6 +6,7 @@ import com.vstorchevyi.skilky.ai.OllamaClient
 import com.vstorchevyi.skilky.ai.TextParsingService
 import com.vstorchevyi.skilky.config.AppConfig
 import com.vstorchevyi.skilky.db.DatabaseFactory
+import com.vstorchevyi.skilky.repository.AnalyticsRepository
 import com.vstorchevyi.skilky.repository.CategoryRepository
 import com.vstorchevyi.skilky.repository.ExpenseRepository
 import com.vstorchevyi.skilky.repository.ParseCorrectionsRepository
@@ -68,6 +69,7 @@ private fun persistenceModule(): Module =
         singleOf(::CategoryRepository)
         singleOf(::ExpenseRepository)
         singleOf(::ParseCorrectionsRepository)
+        singleOf(::AnalyticsRepository)
     }
 
 private fun aiModule(): Module =

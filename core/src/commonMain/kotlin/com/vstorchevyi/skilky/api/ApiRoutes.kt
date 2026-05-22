@@ -32,4 +32,11 @@ object ApiRoutes {
         const val RECEIPT = "$BASE/parse/receipt"
         const val CORRECTIONS = "$BASE/parse/corrections"
     }
+
+    object Analytics {
+        const val ROOT = "$BASE/analytics"
+        const val MONTHLY = "$ROOT/monthly"
+        const val BREAKDOWN = "$ROOT/breakdown"
+        const val TREND = "$ROOT/trend"
+    }
 }
