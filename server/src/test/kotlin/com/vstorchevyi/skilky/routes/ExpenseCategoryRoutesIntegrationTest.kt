@@ -396,6 +396,42 @@ class ExpenseCategoryRoutesIntegrationTest {
         }
 
     @Test
+    fun `PUT expense onto another expense's clientId returns 409`() =
+        runExpenseCategoryTest { sut ->
+            // Arrange — two expenses with distinct client ids
+            val auth = sut.registerFreshUser()
+            val foodId = sut.foodCategoryId(auth.token)
+            val clientA = UUID.randomUUID().toString()
+            val clientB = UUID.randomUUID().toString()
+            val day = LocalDate(2026, 3, 21)
+            val created =
+                sut
+                    .postExpenses(
+                        auth.token,
+                        anExpenseBatchRequest(
+                            listOf(
+                                anExpenseRequest(categoryId = foodId, clientId = clientA, date = day),
+                                anExpenseRequest(categoryId = foodId, clientId = clientB, date = day),
+                            ),
+                        ),
+                    ).body<ExpenseListResponse>()
+                    .items
+            // The batch preserves request order, so items[1] carries clientB.
+            val secondExpenseId = created[1].id
+
+            // Act — move the second expense onto the first one's clientId
+            val response =
+                sut.putExpense(
+                    auth.token,
+                    secondExpenseId,
+                    anExpenseRequest(categoryId = foodId, clientId = clientA, date = day),
+                )
+
+            // Assert: a unique-index collision is a 409, not a 500
+            response.status shouldBe HttpStatusCode.Conflict
+        }
+
+    @Test
     fun `DELETE expense on unknown id returns 404`() =
         runExpenseCategoryTest { sut ->
             // Arrange
