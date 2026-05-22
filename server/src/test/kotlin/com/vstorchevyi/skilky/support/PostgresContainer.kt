@@ -57,6 +57,7 @@ fun ApplicationTestBuilder.useTestConfigWithDb(extra: Map<String, String> = empt
                 "skilky.jwt.accessTokenExpirationDays" to "7",
                 "skilky.jwt.refreshTokenExpirationDays" to "90",
                 "skilky.security.refreshTokenPepper" to "test-pepper",
+                "skilky.security.bcryptCost" to "4",
                 "skilky.database.jdbcUrl" to PostgresContainer.jdbcUrl,
                 "skilky.database.user" to PostgresContainer.username,
                 "skilky.database.password" to PostgresContainer.password,

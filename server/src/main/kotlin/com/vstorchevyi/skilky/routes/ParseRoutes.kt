@@ -29,12 +29,13 @@ import io.ktor.server.routing.route
 import io.ktor.utils.io.toByteArray
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import org.koin.ktor.ext.inject
 
 /**
  * JWT-protected parse endpoints at
  * [com.vstorchevyi.skilky.api.ApiRoutes.Parse].
  *
- * Errors from [textParsingService] bubble through `StatusPages`:
+ * Errors from the underlying parsing service bubble through `StatusPages`:
  *  - [com.vstorchevyi.skilky.errors.ValidationException] from the input
  *    validators → 422.
  *  - [com.vstorchevyi.skilky.errors.AiUnavailableException] from the
@@ -43,7 +44,8 @@ import kotlinx.serialization.json.Json
  * `/parse/audio` and `/parse/receipt` are `multipart/form-data`. The
  * `file` part carries the binary; `currency` is a form field.
  */
-fun Route.parseRoutes(textParsingService: TextParsingService) {
+fun Route.parseRoutes() {
+    val textParsingService: TextParsingService by inject()
     authenticate(jwtAuthName()) {
         rateLimit(ParseRateLimit) {
             route(ApiRoutes.Parse.TEXT) {
@@ -87,7 +89,8 @@ fun Route.parseRoutes(textParsingService: TextParsingService) {
  * can be quantified later. Lightweight insert; rate-limited under the
  * same bucket as the parse routes to avoid a separate budget.
  */
-fun Route.parseCorrectionsRoutes(repository: ParseCorrectionsRepository) {
+fun Route.parseCorrectionsRoutes() {
+    val repository: ParseCorrectionsRepository by inject()
     authenticate(jwtAuthName()) {
         rateLimit(ParseRateLimit) {
             route(ApiRoutes.Parse.CORRECTIONS) {
@@ -127,6 +130,24 @@ private data class ParseFormParts(
         Currency.fromCode(
             currencyCode ?: throw ValidationException("Missing 'currency' part"),
         ) ?: throw ValidationException("Unknown currency code: $currencyCode")
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as ParseFormParts
+
+        if (!fileBytes.contentEquals(other.fileBytes)) return false
+        if (currencyCode != other.currencyCode) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = fileBytes?.contentHashCode() ?: 0
+        result = 31 * result + (currencyCode?.hashCode() ?: 0)
+        return result
+    }
 }
 
 private suspend fun MultiPartData.readForm(): ParseFormParts {

@@ -6,13 +6,15 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.jwt.jwt
+import org.koin.ktor.ext.get
 import org.slf4j.LoggerFactory
 
 private const val JWT_AUTH = "jwt-auth"
 
 private val logger = LoggerFactory.getLogger("com.vstorchevyi.skilky.plugins.Authentication")
 
-fun Application.configureJwtAuthentication(tokenProvider: JwtTokenProvider) {
+fun Application.configureJwtAuthentication() {
+    val tokenProvider = get<JwtTokenProvider>()
     install(Authentication) {
         jwt(JWT_AUTH) {
             realm = "Skilky API"

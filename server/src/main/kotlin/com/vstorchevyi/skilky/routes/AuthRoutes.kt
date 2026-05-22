@@ -18,34 +18,41 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
+import org.koin.ktor.ext.inject
 
-fun Route.authRoutes(
-    jwtConfig: AppConfig.JwtConfig,
-    userRepository: UserRepository,
-    refreshTokenRepository: RefreshTokenRepository,
-    passwordHasher: PasswordHasher,
-    tokenProvider: JwtTokenProvider,
-) {
+fun Route.authRoutes() {
+    val jwtConfig: AppConfig.JwtConfig by inject()
+    val userRepository: UserRepository by inject()
+    val refreshTokenRepository: RefreshTokenRepository by inject()
+    val passwordHasher: PasswordHasher by inject()
+    val tokenProvider: JwtTokenProvider by inject()
+    val deps = AuthDeps(jwtConfig, userRepository, refreshTokenRepository, passwordHasher, tokenProvider)
+    authRegisterRoute(deps)
+    authLoginRoute(deps)
+    authRefreshRoute(deps)
+}
+
+private fun Route.authRegisterRoute(deps: AuthDeps) {
     post(ApiRoutes.Auth.REGISTER) {
         val req = call.receive<RegisterRequest>()
         validateRegisterRequest(req)
 
-        if (userRepository.findByEmail(req.email) != null) {
+        if (deps.userRepository.findByEmail(req.email) != null) {
             throw ConflictException("Email already registered")
         }
 
         val user =
-            userRepository.create(
+            deps.userRepository.create(
                 email = req.email,
-                passwordHash = passwordHasher.hash(req.password),
+                passwordHash = deps.passwordHasher.hash(req.password),
                 displayName = req.displayName.trim(),
             )
 
-        val accessToken = tokenProvider.createAccessToken(user.id, user.email)
+        val accessToken = deps.tokenProvider.createAccessToken(user.id, user.email)
         val refreshToken =
-            refreshTokenRepository.create(
+            deps.refreshTokenRepository.create(
                 userId = user.id,
-                ttlDays = jwtConfig.refreshTokenExpirationDays,
+                ttlDays = deps.jwtConfig.refreshTokenExpirationDays,
             )
 
         call.respond(
@@ -53,42 +60,21 @@ fun Route.authRoutes(
             AuthResponse(token = accessToken, refreshToken = refreshToken, user = user.toDto()),
         )
     }
+}
 
+private fun Route.authLoginRoute(deps: AuthDeps) {
     post(ApiRoutes.Auth.LOGIN) {
         val req = call.receive<LoginRequest>()
-        val user = userRepository.findByEmail(req.email) ?: throw UnauthorizedException()
-        if (!passwordHasher.verify(req.password, user.passwordHash)) {
+        val user = deps.userRepository.findByEmail(req.email) ?: throw UnauthorizedException()
+        if (!deps.passwordHasher.verify(req.password, user.passwordHash)) {
             throw UnauthorizedException()
         }
 
-        val accessToken = tokenProvider.createAccessToken(user.id, user.email)
+        val accessToken = deps.tokenProvider.createAccessToken(user.id, user.email)
         val refreshToken =
-            refreshTokenRepository.create(
+            deps.refreshTokenRepository.create(
                 userId = user.id,
-                ttlDays = jwtConfig.refreshTokenExpirationDays,
-            )
-
-        call.respond(
-            AuthResponse(token = accessToken, refreshToken = refreshToken, user = user.toDto()),
-        )
-    }
-
-    post(ApiRoutes.Auth.REFRESH) {
-        val req = call.receive<RefreshRequest>()
-        val record =
-            refreshTokenRepository.findValid(req.refreshToken)
-                ?: throw UnauthorizedException("Invalid or expired refresh token")
-        val user =
-            userRepository.findById(record.userId)
-                ?: throw UnauthorizedException("User no longer exists")
-
-        refreshTokenRepository.delete(record.id)
-
-        val accessToken = tokenProvider.createAccessToken(user.id, user.email)
-        val refreshToken =
-            refreshTokenRepository.create(
-                userId = user.id,
-                ttlDays = jwtConfig.refreshTokenExpirationDays,
+                ttlDays = deps.jwtConfig.refreshTokenExpirationDays,
             )
 
         call.respond(
@@ -96,3 +82,36 @@ fun Route.authRoutes(
         )
     }
 }
+
+private fun Route.authRefreshRoute(deps: AuthDeps) {
+    post(ApiRoutes.Auth.REFRESH) {
+        val req = call.receive<RefreshRequest>()
+        val record =
+            deps.refreshTokenRepository.findValid(req.refreshToken)
+                ?: throw UnauthorizedException("Invalid or expired refresh token")
+        val user =
+            deps.userRepository.findById(record.userId)
+                ?: throw UnauthorizedException("User no longer exists")
+
+        deps.refreshTokenRepository.delete(record.id)
+
+        val accessToken = deps.tokenProvider.createAccessToken(user.id, user.email)
+        val refreshToken =
+            deps.refreshTokenRepository.create(
+                userId = user.id,
+                ttlDays = deps.jwtConfig.refreshTokenExpirationDays,
+            )
+
+        call.respond(
+            AuthResponse(token = accessToken, refreshToken = refreshToken, user = user.toDto()),
+        )
+    }
+}
+
+private data class AuthDeps(
+    val jwtConfig: AppConfig.JwtConfig,
+    val userRepository: UserRepository,
+    val refreshTokenRepository: RefreshTokenRepository,
+    val passwordHasher: PasswordHasher,
+    val tokenProvider: JwtTokenProvider,
+)

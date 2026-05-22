@@ -6,13 +6,15 @@ import io.ktor.http.HttpMethod
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.cors.routing.CORS
+import org.koin.ktor.ext.get
 
-fun Application.configureCors(appConfig: AppConfig) {
+fun Application.configureCors() {
+    val cors = get<AppConfig.CorsConfig>()
     install(CORS) {
-        if (appConfig.cors.allowedHosts.contains("*")) {
+        if (cors.allowedHosts.contains("*")) {
             anyHost()
         } else {
-            appConfig.cors.allowedHosts.forEach { host -> allowHost(host) }
+            cors.allowedHosts.forEach { host -> allowHost(host) }
         }
 
         allowMethod(HttpMethod.Options)

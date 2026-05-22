@@ -76,6 +76,9 @@ dependencies {
     implementation(libs.ktor.serverRateLimit)
     implementation(libs.bcrypt)
 
+    implementation(libs.koin.ktor)
+    implementation(libs.koin.loggerSlf4j)
+
     implementation(libs.ktor.clientCore)
     implementation(libs.ktor.clientCio)
     implementation(libs.ktor.clientContentNegotiation)
@@ -90,4 +93,5 @@ dependencies {
     testImplementation(libs.testcontainers.core)
     testImplementation(libs.kotest.assertionsCore)
     testImplementation(libs.ktor.clientMock)
+    testImplementation(libs.koin.test)
 }

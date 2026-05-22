@@ -48,9 +48,16 @@ data class AppConfig(
         val refreshTokenExpirationDays: Int,
     )
 
-    /** @property refreshTokenPepper HMAC key for refresh-token hashing. */
+    /**
+     * @property refreshTokenPepper HMAC key for refresh-token hashing.
+     * @property bcryptCost BCrypt work factor for password hashing. Higher
+     *   is slower and more brute-force-resistant; 12 is the production
+     *   default. Drop to 4 in tests so the suite isn't dominated by hash
+     *   latency.
+     */
     data class SecurityConfig(
         val refreshTokenPepper: String,
+        val bcryptCost: Int,
     )
 
     /**
@@ -117,6 +124,7 @@ data class AppConfig(
                 security =
                     SecurityConfig(
                         refreshTokenPepper = config.property("skilky.security.refreshTokenPepper").getString(),
+                        bcryptCost = config.property("skilky.security.bcryptCost").getString().toInt(),
                     ),
                 ai =
                     config.propertyOrNull("skilky.ai.baseUrl")?.let {

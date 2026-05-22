@@ -19,6 +19,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
+import org.koin.ktor.ext.inject
 
 /**
  * JWT-protected category CRUD under [com.vstorchevyi.skilky.api.ApiRoutes.Categories].
@@ -27,7 +28,8 @@ import io.ktor.server.routing.route
  * tenant) to avoid leaking whether an id exists globally; touching a system default returns **403**
  * with a clear message because the id is visible to everyone in `GET /categories`.
  */
-fun Route.categoryRoutes(categoryRepository: CategoryRepository) {
+fun Route.categoryRoutes() {
+    val categoryRepository: CategoryRepository by inject()
     authenticate(jwtAuthName()) {
         route(ApiRoutes.Categories.ROOT) {
             categoryGetList(categoryRepository)

@@ -23,6 +23,7 @@ fun ApplicationTestBuilder.useTestConfig(extra: Map<String, String> = emptyMap()
                 "skilky.jwt.accessTokenExpirationDays" to "7",
                 "skilky.jwt.refreshTokenExpirationDays" to "90",
                 "skilky.security.refreshTokenPepper" to "test-pepper",
+                "skilky.security.bcryptCost" to "4",
                 *extra.entries.map { it.key to it.value }.toTypedArray(),
             )
     }
