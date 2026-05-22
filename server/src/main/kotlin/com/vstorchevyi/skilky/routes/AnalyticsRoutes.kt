@@ -52,8 +52,8 @@ private fun Route.monthlySummary(analyticsRepository: AnalyticsRepository) {
         val user = call.requireJwtPrincipal()
         val lang = call.requestLanguageTag()
         val today = currentDate()
-        val year = call.request.queryParameters["year"]?.toIntOrNull() ?: today.year
-        val month = call.request.queryParameters["month"]?.toIntOrNull() ?: today.monthNumber
+        val year = intParamOrNull(call.request.queryParameters["year"], "year") ?: today.year
+        val month = intParamOrNull(call.request.queryParameters["month"], "month") ?: today.monthNumber
         if (year !in MIN_YEAR..MAX_YEAR) {
             throw ValidationException("year must be between $MIN_YEAR and $MAX_YEAR")
         }
@@ -92,11 +92,19 @@ private fun Route.categoryBreakdown(analyticsRepository: AnalyticsRepository) {
         }
         val currency = resolveCurrency(call.request.queryParameters["currency"])
         val spend = analyticsRepository.spendByCategory(user.userId, currency, from, to)
-        val grandTotal = spend.sumOf { it.total }
+        // Percentages are reconciled across the whole list so they sum to
+        // exactly 100.0; see allocatePercentages.
+        val percentages = allocatePercentages(spend.map { it.total }, spend.sumOf { it.total })
         call.respond(
             spend
-                .map { it.toBreakdownItem(lang, grandTotal) }
-                .sortedByDescending { it.amount },
+                .mapIndexed { index, categorySpend ->
+                    CategoryBreakdownItem(
+                        category = categorySpend.displayName(lang),
+                        amount = categorySpend.total.toMoneyDouble(),
+                        percentage = percentages[index],
+                        count = categorySpend.count.toInt(),
+                    )
+                }.sortedByDescending { it.amount },
         )
     }
 }
@@ -105,7 +113,8 @@ private fun Route.spendingTrend(analyticsRepository: AnalyticsRepository) {
     get("trend") {
         val user = call.requireJwtPrincipal()
         val granularity = resolveGranularity(call.request.queryParameters["granularity"])
-        val periods = call.request.queryParameters["periods"]?.toIntOrNull() ?: DEFAULT_TREND_PERIODS
+        val periods =
+            intParamOrNull(call.request.queryParameters["periods"], "periods") ?: DEFAULT_TREND_PERIODS
         if (periods !in 1..MAX_TREND_PERIODS) {
             throw ValidationException("periods must be between 1 and $MAX_TREND_PERIODS")
         }
@@ -155,31 +164,24 @@ private fun resolveGranularity(raw: String?): TrendGranularity {
     }
 }
 
+/**
+ * Parses an integer query param. A blank or absent value returns null so the
+ * caller can apply its default; a present but non-numeric value is a client
+ * error and throws [ValidationException] for the `422` envelope.
+ */
+private fun intParamOrNull(
+    raw: String?,
+    paramName: String,
+): Int? {
+    if (raw.isNullOrBlank()) return null
+    return raw.toIntOrNull() ?: throw ValidationException("$paramName must be an integer")
+}
+
 private fun CategorySpend.displayName(languageTag: String): String =
     DefaultCategoryTranslations.displayName(categoryNameKey, categoryName, languageTag)
 
 private fun CategorySpend.toCategoryTotal(languageTag: String): CategoryTotal =
     CategoryTotal(category = displayName(languageTag), amount = total.toMoneyDouble())
-
-private fun CategorySpend.toBreakdownItem(
-    languageTag: String,
-    grandTotal: BigDecimal,
-): CategoryBreakdownItem =
-    CategoryBreakdownItem(
-        category = displayName(languageTag),
-        amount = total.toMoneyDouble(),
-        percentage =
-            if (grandTotal.signum() == 0) {
-                0.0
-            } else {
-                total
-                    .divide(grandTotal, PERCENT_DIVISION_SCALE, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal(PERCENT_FACTOR))
-                    .setScale(1, RoundingMode.HALF_UP)
-                    .toDouble()
-            },
-        count = count.toInt(),
-    )
 
 private fun BigDecimal.toMoneyDouble(): Double = setScale(MONEY_SCALE, RoundingMode.HALF_UP).toDouble()
 
@@ -189,6 +191,4 @@ private const val MONTHS_PER_YEAR = 12
 private const val MIN_YEAR = 2000
 private const val MAX_YEAR = 2100
 private const val MONEY_SCALE = 2
-private const val PERCENT_DIVISION_SCALE = 6
-private const val PERCENT_FACTOR = 100
 private val DEFAULT_CURRENCY = Currency.UAH

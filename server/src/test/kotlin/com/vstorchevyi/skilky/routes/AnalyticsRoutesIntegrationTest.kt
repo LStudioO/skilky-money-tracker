@@ -19,6 +19,7 @@ import com.vstorchevyi.skilky.support.anExpenseRequest
 import com.vstorchevyi.skilky.support.jsonClient
 import com.vstorchevyi.skilky.support.useTestConfigWithDb
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -119,6 +120,38 @@ class AnalyticsRoutesIntegrationTest {
         }
 
     @Test
+    fun `GET monthly rejects a malformed year`() =
+        runAnalyticsTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+
+            // Act — a non-numeric year is a client error, not a silent default
+            val response =
+                sut.get("${ApiRoutes.Analytics.MONTHLY}?year=foo&month=3") {
+                    header(HttpHeaders.Authorization, "Bearer ${auth.token}")
+                }
+
+            // Assert
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+        }
+
+    @Test
+    fun `GET monthly rejects a malformed month`() =
+        runAnalyticsTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+
+            // Act
+            val response =
+                sut.get("${ApiRoutes.Analytics.MONTHLY}?month=foo") {
+                    header(HttpHeaders.Authorization, "Bearer ${auth.token}")
+                }
+
+            // Assert
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+        }
+
+    @Test
     fun `GET monthly without a token returns 401`() =
         runAnalyticsTest { sut ->
             // Act
@@ -159,6 +192,35 @@ class AnalyticsRoutesIntegrationTest {
             items.first().percentage shouldBe 75.0
             items.first().count shouldBe 1
             items.last().percentage shouldBe 25.0
+        }
+
+    @Test
+    fun `GET breakdown percentages sum to exactly 100 across equal categories`() =
+        runAnalyticsTest { sut ->
+            // Arrange — three categories with equal spend in March 2026
+            val auth = sut.registerFreshUser()
+            val foodId = sut.foodCategoryId(auth.token)
+            val gymId = sut.createCategory(auth.token, name = "Gym")
+            val booksId = sut.createCategory(auth.token, name = "Books")
+            sut.postExpenses(
+                auth.token,
+                anExpenseBatchRequest(
+                    listOf(
+                        anExpenseRequest(categoryId = foodId, amount = 10.0, clientId = aUuid()),
+                        anExpenseRequest(categoryId = gymId, amount = 10.0, clientId = aUuid()),
+                        anExpenseRequest(categoryId = booksId, amount = 10.0, clientId = aUuid()),
+                    ),
+                ),
+            )
+
+            // Act
+            val response = sut.getBreakdown(auth.token, from = "2026-03-01", to = "2026-03-31")
+
+            // Assert — independent rounding would sum to 99.9
+            val items = response.body<List<CategoryBreakdownItem>>()
+            items shouldHaveSize 3
+            items.sumOf { it.percentage } shouldBe (100.0 plusOrMinus 1e-6)
+            items.map { it.percentage }.sorted() shouldBe listOf(33.3, 33.3, 33.4)
         }
 
     @Test
@@ -240,6 +302,22 @@ class AnalyticsRoutesIntegrationTest {
             response.status shouldBe HttpStatusCode.UnprocessableEntity
         }
 
+    @Test
+    fun `GET trend rejects a malformed period count`() =
+        runAnalyticsTest { sut ->
+            // Arrange
+            val auth = sut.registerFreshUser()
+
+            // Act — a non-numeric periods value must fail, not fall back to the default
+            val response =
+                sut.get("${ApiRoutes.Analytics.TREND}?granularity=monthly&periods=foo") {
+                    header(HttpHeaders.Authorization, "Bearer ${auth.token}")
+                }
+
+            // Assert
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+        }
+
     private fun runAnalyticsTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =
         testApplication {
             useTestConfigWithDb()
@@ -274,11 +352,14 @@ class AnalyticsRoutesIntegrationTest {
             header(HttpHeaders.Authorization, "Bearer $token")
         }.body<List<CategoryDto>>().first { it.nameKey == DefaultCategoryKeys.FOOD }.id
 
-    private suspend fun HttpClient.createCategory(token: String): Long =
+    private suspend fun HttpClient.createCategory(
+        token: String,
+        name: String = "Gym",
+    ): Long =
         post(ApiRoutes.Categories.ROOT) {
             contentType(ContentType.Application.Json)
             header(HttpHeaders.Authorization, "Bearer $token")
-            setBody(aCreateCategoryRequest())
+            setBody(aCreateCategoryRequest(name = name))
         }.body<CategoryDto>().id
 
     // --- Request builders -------------------------------------------------
