@@ -12,6 +12,12 @@ import org.jetbrains.exposed.v1.datetime.timestamp
  * **Why `client_id` + unique (user_id, client_id):** the mobile client generates a UUID per item
  * before sync; retries and offline queues must not create duplicates. Postgres enforces uniqueness;
  * the repository upserts on conflict.
+ *
+ * **Indexes:** every read filters by `user_id`. `(user_id, date)` serves the
+ * dated expense list and the analytics range scans; `(user_id, category_id)`
+ * serves the optional category filter. `SchemaUtils.create` only builds these
+ * on a fresh table, so existing deployments need them applied by hand until a
+ * migration tool lands.
  */
 object ExpensesTable : LongIdTable("expenses") {
     val userId = reference("user_id", UsersTable, onDelete = ReferenceOption.CASCADE)
@@ -30,5 +36,7 @@ object ExpensesTable : LongIdTable("expenses") {
 
     init {
         uniqueIndex(userId, clientId)
+        index(isUnique = false, columns = arrayOf(userId, date))
+        index(isUnique = false, columns = arrayOf(userId, categoryId))
     }
 }
