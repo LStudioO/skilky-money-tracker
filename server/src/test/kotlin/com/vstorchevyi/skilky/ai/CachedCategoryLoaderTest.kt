@@ -75,11 +75,63 @@ class CachedCategoryLoaderTest {
         b.single().id shouldBe 2L
     }
 
+    @Test
+    fun `the cache evicts the least recently used user past its cap`() {
+        val calls = AtomicInteger(0)
+        val sut =
+            createSut(
+                source = { userId ->
+                    calls.incrementAndGet()
+                    listOf(CategoryHint(id = userId, name = "U$userId"))
+                },
+                maxUsers = 2,
+            )
+
+        runBlocking {
+            sut(1L)
+            sut(2L)
+            sut(3L) // user 1 is the eldest and gets evicted here
+            sut(1L) // user 1 is no longer cached, so this refetches
+        }
+
+        withClue("user 1 was evicted at the cap, so the fourth read reloads it") {
+            calls.get() shouldBe 4
+        }
+    }
+
+    @Test
+    fun `invalidate forces the next read to refetch`() {
+        val calls = AtomicInteger(0)
+        val sut =
+            createSut(
+                source = {
+                    calls.incrementAndGet()
+                    listOf(CategoryHint(id = 1, name = "Food"))
+                },
+            )
+
+        runBlocking {
+            sut(USER_ID)
+            sut.invalidate(USER_ID)
+            sut(USER_ID)
+        }
+
+        withClue("invalidate drops the entry, so the read after it hits the source again") {
+            calls.get() shouldBe 2
+        }
+    }
+
     private fun createSut(
         source: suspend (Long) -> List<CategoryHint>,
         nowMillis: () -> Long = { 0L },
         ttlMillis: Long = 60_000,
-    ) = CachedCategoryLoader(source = source, ttlMillis = ttlMillis, nowMillis = nowMillis)
+        maxUsers: Int = 1_000,
+    ) = CachedCategoryLoader(
+        source = source,
+        ttlMillis = ttlMillis,
+        maxUsers = maxUsers,
+        nowMillis = nowMillis,
+    )
 
     companion object {
         private const val USER_ID = 42L
