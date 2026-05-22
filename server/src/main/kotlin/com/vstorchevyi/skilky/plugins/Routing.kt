@@ -2,6 +2,7 @@ package com.vstorchevyi.skilky.plugins
 
 import com.vstorchevyi.skilky.ai.TextParsingService
 import com.vstorchevyi.skilky.repository.UserRepository
+import com.vstorchevyi.skilky.routes.analyticsRoutes
 import com.vstorchevyi.skilky.routes.authRoutes
 import com.vstorchevyi.skilky.routes.categoryRoutes
 import com.vstorchevyi.skilky.routes.expenseRoutes
@@ -29,6 +30,7 @@ fun Application.configureRouting() {
             categoryRoutes()
             expenseRoutes()
             parseCorrectionsRoutes()
+            analyticsRoutes()
         }
         if (koin.getOrNull<TextParsingService>() != null) {
             parseRoutes()
