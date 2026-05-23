@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 // The Compose Multiplatform resources plugin generates a `Res` accessor
@@ -50,10 +51,29 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(projects.core)
+            implementation(libs.kotlinx.coroutinesCore)
+            implementation(libs.kotlinx.serializationJson)
+            implementation(libs.ktorMp.core)
+            implementation(libs.ktorMp.contentNegotiation)
+            implementation(libs.ktorMp.json)
+            implementation(libs.koin.core)
+            implementation(libs.androidx.datastore.preferencesCore)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.compose.uiTest)
+            implementation(libs.kotlinx.coroutinesTest)
+        }
+        // One Ktor engine per platform. The HTTP client is created in
+        // commonMain from an expect/actual engine; see HttpClientFactory.
+        androidMain.dependencies {
+            implementation(libs.ktorMp.okhttp)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktorMp.darwin)
+        }
+        jvmMain.dependencies {
+            implementation(libs.ktorMp.cio)
         }
         jvmTest.dependencies {
             implementation(compose.desktop.currentOs)
