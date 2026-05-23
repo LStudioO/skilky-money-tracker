@@ -8,6 +8,7 @@ import kotlin.test.assertEquals
 class AuthMapperTest {
     @Test
     fun `maps AuthResponse into a domain AuthSession`() {
+        // Arrange
         val response =
             AuthResponse(
                 token = "access-token",
@@ -21,8 +22,10 @@ class AuthMapperTest {
                     ),
             )
 
+        // Act
         val session = response.toDomain()
 
+        // Assert
         assertEquals("access-token", session.accessToken)
         assertEquals("refresh-token", session.refreshToken)
         assertEquals(42L, session.user.id)

@@ -11,29 +11,42 @@ class InMemoryTokenStorageTest {
     @Test
     fun `read returns null when no session has been saved`() =
         runTest {
+            // Arrange
             val sut = createSut()
 
-            assertNull(sut.read())
+            // Act
+            val read = sut.read()
+
+            // Assert
+            assertNull(read)
         }
 
     @Test
     fun `read returns the saved session`() =
         runTest {
+            // Arrange
             val sut = createSut()
             val session = anAuthSession()
             sut.save(session)
 
-            assertEquals(session, sut.read())
+            // Act
+            val read = sut.read()
+
+            // Assert
+            assertEquals(session, read)
         }
 
     @Test
     fun `clear forgets the saved session`() =
         runTest {
+            // Arrange
             val sut = createSut()
             sut.save(anAuthSession())
 
+            // Act
             sut.clear()
 
+            // Assert
             assertNull(sut.read())
         }
 
