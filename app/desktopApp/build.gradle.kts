@@ -7,6 +7,18 @@ plugins {
     alias(libs.plugins.skilky.kover)
 }
 
+// The desktop host module is `main()` plus Compose Desktop packaging config.
+// Behavior lives in :app:shared.
+kover {
+    reports {
+        filters {
+            excludes {
+                classes("com.vstorchevyi.skilky.MainKt")
+            }
+        }
+    }
+}
+
 dependencies {
     implementation(projects.app.shared)
     implementation(compose.desktop.currentOs)

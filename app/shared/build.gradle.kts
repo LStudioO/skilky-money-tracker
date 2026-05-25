@@ -7,14 +7,20 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
-// The Compose Multiplatform resources plugin generates a `Res` accessor
-// class under `packageOfResClass`. It's pure codegen, not something we
-// write tests against; counting it just pulls the module's coverage down.
 kover {
     reports {
         filters {
             excludes {
-                packages("skilky.composeapp.generated.resources")
+                packages(
+                    // Compose Multiplatform resources codegen. Pure generated
+                    // accessors; not something to test.
+                    "skilky.composeapp.generated.resources",
+                    // Koin module declarations and the platform startup glue.
+                    // Config-style calls into the Koin DSL with no branching,
+                    // exercised transitively by every binding lookup. Same
+                    // reason :server excludes ApplicationKt.
+                    "com.vstorchevyi.skilky.di",
+                )
             }
         }
     }
