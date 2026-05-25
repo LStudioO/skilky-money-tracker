@@ -150,9 +150,31 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  test-desktop:
+    name: Test :app:desktopApp
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Test + Kover
+        run: ./gradlew :app:desktopApp:test :app:desktopApp:koverXmlReport :app:desktopApp:koverHtmlReport :app:desktopApp:koverVerify --continue --stacktrace
+      - name: Upload :app:desktopApp coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-app-desktopApp
+          path: app/desktopApp/build/reports/kover/
+          if-no-files-found: error
+          retention-days: 7
+
   coverage:
     name: Coverage
-    needs: [test-core, test-server, test-shared]
+    needs: [test-core, test-server, test-shared, build-android, test-desktop]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -175,6 +197,16 @@ jobs:
         with:
           name: coverage-app-shared
           path: app/shared/build/reports/kover/
+      - name: Download :app:androidApp coverage
+        uses: actions/download-artifact@v5
+        with:
+          name: coverage-app-androidApp
+          path: app/androidApp/build/reports/kover/
+      - name: Download :app:desktopApp coverage
+        uses: actions/download-artifact@v5
+        with:
+          name: coverage-app-desktopApp
+          path: app/desktopApp/build/reports/kover/
       - name: Render coverage table, badge, and Pages index
         run: python3 .github/scripts/coverage_report.py
       - name: Post coverage table on PR
@@ -192,6 +224,8 @@ jobs:
           cp -r core/build/reports/kover/html site/core
           cp -r server/build/reports/kover/html site/server
           cp -r app/shared/build/reports/kover/html site/app-shared
+          cp -r app/androidApp/build/reports/kover/html site/app-androidApp
+          cp -r app/desktopApp/build/reports/kover/html site/app-desktopApp
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v5
@@ -228,8 +262,8 @@ jobs:
           java-version: '21'
       - uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v6
-      - name: Assemble debug APK + run unit tests
-        run: ./gradlew :app:androidApp:assembleDebug :app:androidApp:testDebugUnitTest --stacktrace
+      - name: Assemble debug APK + run unit tests + Kover
+        run: ./gradlew :app:androidApp:assembleDebug :app:androidApp:testDebugUnitTest :app:androidApp:koverXmlReport :app:androidApp:koverHtmlReport :app:androidApp:koverVerify --continue --stacktrace
       - name: Publish Android test report
         if: always()
         uses: mikepenz/action-junit-report@v6
@@ -243,6 +277,14 @@ jobs:
           name: androidApp-debug-apk
           path: app/androidApp/build/outputs/apk/debug/*.apk
           if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload :app:androidApp coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-app-androidApp
+          path: app/androidApp/build/reports/kover/
+          if-no-files-found: error
           retention-days: 7
 
   build-ios:

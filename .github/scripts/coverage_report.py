@@ -8,6 +8,8 @@ into the same paths):
     core/build/reports/kover/report.xml
     server/build/reports/kover/report.xml
     app/shared/build/reports/kover/report.xml
+    app/androidApp/build/reports/kover/report.xml
+    app/desktopApp/build/reports/kover/report.xml
 
 Outputs:
 
@@ -38,6 +40,8 @@ MODULES: list[tuple[str, str, str]] = [
     (":core", "core/build/reports/kover/report.xml", "core"),
     (":server", "server/build/reports/kover/report.xml", "server"),
     (":app:shared", "app/shared/build/reports/kover/report.xml", "app-shared"),
+    (":app:androidApp", "app/androidApp/build/reports/kover/report.xml", "app-androidApp"),
+    (":app:desktopApp", "app/desktopApp/build/reports/kover/report.xml", "app-desktopApp"),
 ]
 
 

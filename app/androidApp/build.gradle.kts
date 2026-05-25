@@ -3,24 +3,6 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
-// The Android host module is thin: an Application that starts Koin, an
-// Activity that mounts the shared `App()` composable, and a Compose @Preview
-// stub. None of that branches enough to test usefully; the behavior lives in
-// :app:shared and gets covered there.
-kover {
-    reports {
-        filters {
-            excludes {
-                classes(
-                    "com.vstorchevyi.skilky.SkilkyApplication",
-                    "com.vstorchevyi.skilky.MainActivity",
-                    "com.vstorchevyi.skilky.MainActivityKt",
-                )
-            }
-        }
-    }
-}
-
 android {
     namespace = "com.vstorchevyi.skilky"
     compileSdk = libs.versions.android.compileSdk.get().toInt()

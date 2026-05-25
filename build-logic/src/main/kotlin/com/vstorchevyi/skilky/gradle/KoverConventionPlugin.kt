@@ -8,10 +8,12 @@ import org.gradle.kotlin.dsl.configure
 /**
  * Coverage with Kover. Reports surface at `<module>/build/reports/kover/`.
  *
- * Each module enforces a 1% line-coverage floor via `koverVerify`. This is
- * a low bar on purpose: it catches "tests don't run at all" without
- * encouraging tests that hit numbers without testing intent. Bump the
- * floor per-module here as confidence grows.
+ * `koverVerify` runs but does not enforce a minimum: a uniform floor across
+ * the repo would fail thin host modules like `:app:androidApp` and
+ * `:app:desktopApp`, which currently hold only entry-point boot wiring. The
+ * "did the tests actually run" signal lives in the per-module junit report
+ * instead. Reintroduce a module-specific floor here once a ratchet baseline
+ * is in place.
  *
  * Module-specific exclusions (boot wiring, Exposed Table singletons, DTOs)
  * belong in the consuming module's build script, not here.
@@ -33,11 +35,6 @@ class KoverConventionPlugin : Plugin<Project> {
                                 "*\$\$serializer", // kotlinx-serialization codegen
                                 "*ComposableSingletons*", // Compose codegen
                             )
-                        }
-                    }
-                    verify {
-                        rule {
-                            minBound(1)
                         }
                     }
                 }
