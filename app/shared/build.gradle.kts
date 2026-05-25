@@ -56,7 +56,9 @@ kotlin {
             implementation(libs.ktorMp.core)
             implementation(libs.ktorMp.contentNegotiation)
             implementation(libs.ktorMp.json)
-            implementation(libs.koin.core)
+            // `api` so the platform shells (androidApp, desktopApp) see the
+            // Koin Module type when they construct their platform modules.
+            api(libs.koin.core)
             implementation(libs.androidx.datastore.preferencesCore)
         }
         commonTest.dependencies {

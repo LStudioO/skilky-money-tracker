@@ -1,6 +1,6 @@
 package com.vstorchevyi.skilky.di
 
-import com.vstorchevyi.skilky.data.local.InMemoryTokenStorage
+import com.vstorchevyi.skilky.data.local.DataStoreTokenStorage
 import com.vstorchevyi.skilky.data.local.TokenStorage
 import com.vstorchevyi.skilky.data.remote.AuthApi
 import com.vstorchevyi.skilky.data.remote.createHttpClient
@@ -34,7 +34,7 @@ internal val networkModule: Module =
 
 internal val dataModule: Module =
     module {
-        singleOf(::InMemoryTokenStorage) bind TokenStorage::class
+        singleOf(::DataStoreTokenStorage) bind TokenStorage::class
         singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     }
 
