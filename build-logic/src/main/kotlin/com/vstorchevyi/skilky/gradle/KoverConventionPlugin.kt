@@ -11,7 +11,9 @@ import org.gradle.kotlin.dsl.configure
  * Each module enforces a 1% line-coverage floor via `koverVerify`. This is
  * a low bar on purpose: it catches "tests don't run at all" without
  * encouraging tests that hit numbers without testing intent. Bump the
- * floor per-module here as confidence grows.
+ * floor per-module here as confidence grows. Modules whose every class is
+ * filtered out (e.g. thin app shells with only boot wiring) report 0/0
+ * lines, which the rule treats as vacuously satisfied.
  *
  * Module-specific exclusions (boot wiring, Exposed Table singletons, DTOs)
  * belong in the consuming module's build script, not here.

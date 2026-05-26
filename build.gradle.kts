@@ -24,4 +24,6 @@ dependencies {
     kover(projects.core)
     kover(projects.server)
     kover(project(":app:shared"))
+    kover(project(":app:androidApp"))
+    kover(project(":app:desktopApp"))
 }

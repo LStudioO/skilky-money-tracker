@@ -10,6 +10,7 @@ class AndroidAppConventionPlugin : Plugin<Project> {
                 apply("com.android.application")
                 apply("skilky.detekt")
                 apply("skilky.spotless")
+                apply("skilky.kover")
             }
         }
 }

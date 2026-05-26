@@ -8,6 +8,8 @@ into the same paths):
     core/build/reports/kover/report.xml
     server/build/reports/kover/report.xml
     app/shared/build/reports/kover/report.xml
+    app/androidApp/build/reports/kover/report.xml
+    app/desktopApp/build/reports/kover/report.xml
 
 Outputs:
 
@@ -38,6 +40,8 @@ MODULES: list[tuple[str, str, str]] = [
     (":core", "core/build/reports/kover/report.xml", "core"),
     (":server", "server/build/reports/kover/report.xml", "server"),
     (":app:shared", "app/shared/build/reports/kover/report.xml", "app-shared"),
+    (":app:androidApp", "app/androidApp/build/reports/kover/report.xml", "app-androidApp"),
+    (":app:desktopApp", "app/desktopApp/build/reports/kover/report.xml", "app-desktopApp"),
 ]
 
 
@@ -95,6 +99,17 @@ def write_badge(cov: Coverage, out: Path) -> None:
     }))
 
 
+def coverage_cell(cov: Coverage) -> str:
+    # A module with every class filtered out (e.g. an app shell whose only
+    # main code is boot wiring) reports 0/0 lines. Rendering that as "0.0%"
+    # with an empty bar would imply nothing is tested, when in fact nothing
+    # is countable. Show a dash so the row stays in the table without
+    # misleading the reader.
+    if cov.total == 0:
+        return "—"
+    return f"`{bar(cov.pct)}` {cov.pct:.1f}%"
+
+
 def write_comment(rows: list[tuple[str, Coverage]], total: Coverage, out: Path) -> None:
     # Baseline / Delta columns are placeholders. They light up once a
     # ratchet baseline file lands in the repo; until then the values
@@ -106,17 +121,22 @@ def write_comment(rows: list[tuple[str, Coverage]], total: Coverage, out: Path) 
         "|---|---|---|---|",
     ]
     for name, cov in rows:
-        lines.append(f"| `{name}` | `{bar(cov.pct)}` {cov.pct:.1f}% | — | — |")
+        lines.append(f"| `{name}` | {coverage_cell(cov)} | — | — |")
     lines.append(f"| **Total** | `{bar(total.pct)}` **{total.pct:.1f}%** | — | — |")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines) + "\n")
 
 
 def write_index(rows: list[tuple[str, str, Coverage]], total: Coverage, out: Path) -> None:
-    items = "\n".join(
-        f'    <li><a href="{slug}/">{name}</a> — {cov.pct:.1f}% ({cov.covered} / {cov.total} lines)</li>'
-        for name, slug, cov in rows
-    )
+    def row(name: str, slug: str, cov: Coverage) -> str:
+        if cov.total == 0:
+            return f'    <li><a href="{slug}/">{name}</a> — no countable lines</li>'
+        return (
+            f'    <li><a href="{slug}/">{name}</a> — '
+            f'{cov.pct:.1f}% ({cov.covered} / {cov.total} lines)</li>'
+        )
+
+    items = "\n".join(row(name, slug, cov) for name, slug, cov in rows)
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>

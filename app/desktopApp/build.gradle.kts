@@ -4,6 +4,19 @@ plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.skilky.kover)
+}
+
+// The desktop host module is `main()` plus Compose Desktop packaging config.
+// Behavior lives in :app:shared.
+kover {
+    reports {
+        filters {
+            excludes {
+                classes("com.vstorchevyi.skilky.MainKt")
+            }
+        }
+    }
 }
 
 dependencies {
