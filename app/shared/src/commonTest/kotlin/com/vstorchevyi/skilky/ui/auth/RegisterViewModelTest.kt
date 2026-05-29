@@ -38,12 +38,12 @@ class RegisterViewModelTest {
             // Arrange
             val repository = FakeAuthRepository()
             val sut = createSut(repository = repository)
-            sut.onIntent(RegisterIntent.EmailChanged("v@example.com"))
-            sut.onIntent(RegisterIntent.PasswordChanged("hunter2"))
+            sut.onEmailChange("v@example.com")
+            sut.onPasswordChange("hunter2")
             // display name is intentionally left blank
 
             // Act
-            sut.onIntent(RegisterIntent.Submit)
+            sut.onSubmit()
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -58,12 +58,12 @@ class RegisterViewModelTest {
             val repository =
                 FakeAuthRepository(registerResult = Either.Right(FakeAuthRepository.defaultSession()))
             val sut = createSut(repository = repository)
-            sut.onIntent(RegisterIntent.DisplayNameChanged("  Vlad  "))
-            sut.onIntent(RegisterIntent.EmailChanged("  v@example.com  "))
-            sut.onIntent(RegisterIntent.PasswordChanged("hunter2"))
+            sut.onDisplayNameChange("  Vlad  ")
+            sut.onEmailChange("  v@example.com  ")
+            sut.onPasswordChange("hunter2")
 
             // Act
-            sut.onIntent(RegisterIntent.Submit)
+            sut.onSubmit()
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -80,12 +80,12 @@ class RegisterViewModelTest {
             // Arrange
             val repository = FakeAuthRepository(registerResult = Either.Left(AppError.Conflict))
             val sut = createSut(repository = repository)
-            sut.onIntent(RegisterIntent.DisplayNameChanged("Vlad"))
-            sut.onIntent(RegisterIntent.EmailChanged("taken@example.com"))
-            sut.onIntent(RegisterIntent.PasswordChanged("hunter2"))
+            sut.onDisplayNameChange("Vlad")
+            sut.onEmailChange("taken@example.com")
+            sut.onPasswordChange("hunter2")
 
             // Act
-            sut.onIntent(RegisterIntent.Submit)
+            sut.onSubmit()
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -94,14 +94,14 @@ class RegisterViewModelTest {
         }
 
     @Test
-    fun `GoToLogin emits the navigate effect without touching the repository`() =
+    fun `onGoToLogin emits the navigate effect without touching the repository`() =
         runTest(dispatcher) {
             // Arrange
             val repository = FakeAuthRepository()
             val sut = createSut(repository = repository)
 
             // Act
-            sut.onIntent(RegisterIntent.GoToLogin)
+            sut.onGoToLogin()
 
             // Assert
             assertEquals(RegisterEffect.NavigateToLogin, sut.effects.first())

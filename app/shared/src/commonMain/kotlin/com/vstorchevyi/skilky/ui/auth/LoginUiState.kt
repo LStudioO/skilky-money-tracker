@@ -13,21 +13,6 @@ data class LoginUiState(
         get() = !isSubmitting && email.isNotBlank() && password.isNotBlank()
 }
 
-/** What the screen can ask the [LoginViewModel] to do. */
-sealed interface LoginIntent {
-    data class EmailChanged(
-        val value: String,
-    ) : LoginIntent
-
-    data class PasswordChanged(
-        val value: String,
-    ) : LoginIntent
-
-    data object Submit : LoginIntent
-
-    data object GoToRegister : LoginIntent
-}
-
 /** One-shot signals the screen consumes once and turns into navigation. */
 sealed interface LoginEffect {
     data object NavigateToHome : LoginEffect

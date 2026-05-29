@@ -18,24 +18,6 @@ data class RegisterUiState(
                 displayName.isNotBlank()
 }
 
-sealed interface RegisterIntent {
-    data class EmailChanged(
-        val value: String,
-    ) : RegisterIntent
-
-    data class PasswordChanged(
-        val value: String,
-    ) : RegisterIntent
-
-    data class DisplayNameChanged(
-        val value: String,
-    ) : RegisterIntent
-
-    data object Submit : RegisterIntent
-
-    data object GoToLogin : RegisterIntent
-}
-
 sealed interface RegisterEffect {
     data object NavigateToHome : RegisterEffect
 

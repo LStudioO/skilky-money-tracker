@@ -6,10 +6,6 @@ data class HomeUiState(
     val email: String = "",
 )
 
-sealed interface HomeIntent {
-    data object SignOut : HomeIntent
-}
-
 sealed interface HomeEffect {
     data object NavigateToLogin : HomeEffect
 }

@@ -26,31 +26,23 @@ class RegisterViewModel(
         )
     val effects = _effects.receiveAsFlow()
 
-    fun onIntent(intent: RegisterIntent) {
-        when (intent) {
-            is RegisterIntent.EmailChanged -> {
-                _state.update { it.copy(email = intent.value, error = null) }
-            }
-
-            is RegisterIntent.PasswordChanged -> {
-                _state.update { it.copy(password = intent.value, error = null) }
-            }
-
-            is RegisterIntent.DisplayNameChanged -> {
-                _state.update { it.copy(displayName = intent.value, error = null) }
-            }
-
-            RegisterIntent.Submit -> {
-                submit()
-            }
-
-            RegisterIntent.GoToLogin -> {
-                _effects.trySend(RegisterEffect.NavigateToLogin)
-            }
-        }
+    fun onEmailChange(value: String) {
+        _state.update { it.copy(email = value, error = null) }
     }
 
-    private fun submit() {
+    fun onPasswordChange(value: String) {
+        _state.update { it.copy(password = value, error = null) }
+    }
+
+    fun onDisplayNameChange(value: String) {
+        _state.update { it.copy(displayName = value, error = null) }
+    }
+
+    fun onGoToLogin() {
+        _effects.trySend(RegisterEffect.NavigateToLogin)
+    }
+
+    fun onSubmit() {
         val snapshot = _state.value
         if (!snapshot.canSubmit) return
         _state.update { it.copy(isSubmitting = true, error = null) }

@@ -69,7 +69,7 @@ class HomeViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             // Act
-            sut.onIntent(HomeIntent.SignOut)
+            sut.onSignOut()
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert

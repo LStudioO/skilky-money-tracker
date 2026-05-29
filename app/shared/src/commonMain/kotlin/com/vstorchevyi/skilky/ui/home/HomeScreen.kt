@@ -40,7 +40,7 @@ fun HomeScreen(
 
     HomeScreenContent(
         state = state,
-        onSignOut = { viewModel.onIntent(HomeIntent.SignOut) },
+        onSignOut = viewModel::onSignOut,
     )
 }
 

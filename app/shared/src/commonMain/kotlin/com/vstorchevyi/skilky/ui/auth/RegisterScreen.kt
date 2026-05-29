@@ -48,11 +48,11 @@ fun RegisterScreen(
 
     RegisterScreenContent(
         state = state,
-        onDisplayNameChange = { viewModel.onIntent(RegisterIntent.DisplayNameChanged(it)) },
-        onEmailChange = { viewModel.onIntent(RegisterIntent.EmailChanged(it)) },
-        onPasswordChange = { viewModel.onIntent(RegisterIntent.PasswordChanged(it)) },
-        onSubmit = { viewModel.onIntent(RegisterIntent.Submit) },
-        onGoToLogin = { viewModel.onIntent(RegisterIntent.GoToLogin) },
+        onDisplayNameChange = viewModel::onDisplayNameChange,
+        onEmailChange = viewModel::onEmailChange,
+        onPasswordChange = viewModel::onPasswordChange,
+        onSubmit = viewModel::onSubmit,
+        onGoToLogin = viewModel::onGoToLogin,
     )
 }
 

@@ -26,27 +26,19 @@ class LoginViewModel(
         )
     val effects = _effects.receiveAsFlow()
 
-    fun onIntent(intent: LoginIntent) {
-        when (intent) {
-            is LoginIntent.EmailChanged -> {
-                _state.update { it.copy(email = intent.value, error = null) }
-            }
-
-            is LoginIntent.PasswordChanged -> {
-                _state.update { it.copy(password = intent.value, error = null) }
-            }
-
-            LoginIntent.Submit -> {
-                submit()
-            }
-
-            LoginIntent.GoToRegister -> {
-                _effects.trySend(LoginEffect.NavigateToRegister)
-            }
-        }
+    fun onEmailChange(value: String) {
+        _state.update { it.copy(email = value, error = null) }
     }
 
-    private fun submit() {
+    fun onPasswordChange(value: String) {
+        _state.update { it.copy(password = value, error = null) }
+    }
+
+    fun onGoToRegister() {
+        _effects.trySend(LoginEffect.NavigateToRegister)
+    }
+
+    fun onSubmit() {
         val snapshot = _state.value
         if (!snapshot.canSubmit) return
         _state.update { it.copy(isSubmitting = true, error = null) }

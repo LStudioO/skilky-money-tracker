@@ -48,10 +48,10 @@ fun LoginScreen(
 
     LoginScreenContent(
         state = state,
-        onEmailChange = { viewModel.onIntent(LoginIntent.EmailChanged(it)) },
-        onPasswordChange = { viewModel.onIntent(LoginIntent.PasswordChanged(it)) },
-        onSubmit = { viewModel.onIntent(LoginIntent.Submit) },
-        onGoToRegister = { viewModel.onIntent(LoginIntent.GoToRegister) },
+        onEmailChange = viewModel::onEmailChange,
+        onPasswordChange = viewModel::onPasswordChange,
+        onSubmit = viewModel::onSubmit,
+        onGoToRegister = viewModel::onGoToRegister,
     )
 }
 

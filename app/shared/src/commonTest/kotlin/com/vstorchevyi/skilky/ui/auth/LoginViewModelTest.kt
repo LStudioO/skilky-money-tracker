@@ -38,10 +38,10 @@ class LoginViewModelTest {
         runTest(dispatcher) {
             // Arrange
             val sut = createSut()
-            sut.onIntent(LoginIntent.EmailChanged("v@example.com"))
+            sut.onEmailChange("v@example.com")
 
             // Act
-            sut.onIntent(LoginIntent.PasswordChanged("hunter2"))
+            sut.onPasswordChange("hunter2")
 
             // Assert
             val state = sut.state.value
@@ -59,7 +59,7 @@ class LoginViewModelTest {
             val sut = createSut(repository = repository)
 
             // Act
-            sut.onIntent(LoginIntent.Submit)
+            sut.onSubmit()
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -74,11 +74,11 @@ class LoginViewModelTest {
             val repository =
                 FakeAuthRepository(loginResult = Either.Right(FakeAuthRepository.defaultSession()))
             val sut = createSut(repository = repository)
-            sut.onIntent(LoginIntent.EmailChanged("  v@example.com  "))
-            sut.onIntent(LoginIntent.PasswordChanged("hunter2"))
+            sut.onEmailChange("  v@example.com  ")
+            sut.onPasswordChange("hunter2")
 
             // Act
-            sut.onIntent(LoginIntent.Submit)
+            sut.onSubmit()
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -95,11 +95,11 @@ class LoginViewModelTest {
             // Arrange
             val repository = FakeAuthRepository(loginResult = Either.Left(AppError.Unauthorized))
             val sut = createSut(repository = repository)
-            sut.onIntent(LoginIntent.EmailChanged("v@example.com"))
-            sut.onIntent(LoginIntent.PasswordChanged("wrong"))
+            sut.onEmailChange("v@example.com")
+            sut.onPasswordChange("wrong")
 
             // Act
-            sut.onIntent(LoginIntent.Submit)
+            sut.onSubmit()
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -108,14 +108,14 @@ class LoginViewModelTest {
         }
 
     @Test
-    fun `GoToRegister emits the navigate effect without touching the repository`() =
+    fun `onGoToRegister emits the navigate effect without touching the repository`() =
         runTest(dispatcher) {
             // Arrange
             val repository = FakeAuthRepository()
             val sut = createSut(repository = repository)
 
             // Act
-            sut.onIntent(LoginIntent.GoToRegister)
+            sut.onGoToRegister()
 
             // Assert
             assertEquals(LoginEffect.NavigateToRegister, sut.effects.first())

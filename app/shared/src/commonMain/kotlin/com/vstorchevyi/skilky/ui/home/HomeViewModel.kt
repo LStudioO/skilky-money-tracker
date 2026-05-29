@@ -34,14 +34,10 @@ class HomeViewModel(
         }
     }
 
-    fun onIntent(intent: HomeIntent) {
-        when (intent) {
-            HomeIntent.SignOut -> {
-                viewModelScope.launch {
-                    logout()
-                    _effects.trySend(HomeEffect.NavigateToLogin)
-                }
-            }
+    fun onSignOut() {
+        viewModelScope.launch {
+            logout()
+            _effects.trySend(HomeEffect.NavigateToLogin)
         }
     }
 }
