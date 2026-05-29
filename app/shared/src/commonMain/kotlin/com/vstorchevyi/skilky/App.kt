@@ -1,53 +1,64 @@
 package com.vstorchevyi.skilky
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
-import skilky.composeapp.generated.resources.Res
-import skilky.composeapp.generated.resources.compose_multiplatform
+import androidx.navigation.compose.rememberNavController
+import com.vstorchevyi.skilky.data.remote.SessionEvents
+import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
+import com.vstorchevyi.skilky.ui.navigation.Route
+import com.vstorchevyi.skilky.ui.navigation.SkilkyNavHost
+import org.koin.compose.koinInject
 
+/**
+ * Root composable. Picks the start destination from the persisted session,
+ * mounts [SkilkyNavHost], and listens for mid-session sign-out signals so the
+ * nav stack can bounce back to login when the server has invalidated us.
+ */
 @Composable
-@Preview
 fun App() {
     MaterialTheme {
-        var showContent by remember { mutableStateOf(value = false) }
-        Column(
-            modifier =
-                Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .safeContentPadding()
-                    .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), contentDescription = null)
-                    Text("Compose: $greeting")
+        val getCurrentSession = koinInject<GetCurrentSessionUseCase>()
+        val sessionEvents = koinInject<SessionEvents>()
+        val navController = rememberNavController()
+
+        var startDestination by remember { mutableStateOf<Route?>(null) }
+
+        LaunchedEffect(Unit) {
+            startDestination =
+                if (getCurrentSession() != null) Route.Home else Route.Login
+        }
+
+        LaunchedEffect(Unit) {
+            sessionEvents.signedOut.collect {
+                navController.navigate(Route.Login) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                    launchSingleTop = true
                 }
             }
         }
+
+        val resolvedStart = startDestination
+        if (resolvedStart == null) {
+            SplashScreen()
+        } else {
+            SkilkyNavHost(startDestination = resolvedStart, navController = navController)
+        }
+    }
+}
+
+@Composable
+private fun SplashScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }

@@ -23,10 +23,9 @@ import kotlinx.serialization.json.Json
  */
 internal class DataStoreTokenStorage(
     private val dataStore: DataStore<Preferences>,
-    private val json: Json = DefaultJson,
 ) : TokenStorage {
     override suspend fun save(session: AuthSession) {
-        val payload = json.encodeToString(session.toStored())
+        val payload = JSON.encodeToString(session.toStored())
         dataStore.edit { prefs ->
             prefs[SESSION_KEY] = payload
         }
@@ -37,7 +36,7 @@ internal class DataStoreTokenStorage(
             .data
             .map { prefs -> prefs[SESSION_KEY] }
             .first()
-            ?.let { json.decodeFromString<StoredAuthSession>(it).toDomain() }
+            ?.let { JSON.decodeFromString<StoredAuthSession>(it).toDomain() }
 
     override suspend fun clear() {
         dataStore.edit { it.clear() }
@@ -47,7 +46,7 @@ internal class DataStoreTokenStorage(
         // Versioned so a future format change can land without overlapping the
         // old key. Old keys are simply ignored on read.
         val SESSION_KEY = stringPreferencesKey("auth_session_v1")
-        val DefaultJson: Json =
+        val JSON: Json =
             Json {
                 ignoreUnknownKeys = true
                 explicitNulls = false
