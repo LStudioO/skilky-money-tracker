@@ -1,0 +1,76 @@
+package com.vstorchevyi.skilky.ui.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.vstorchevyi.skilky.ui.auth.LoginScreen
+import com.vstorchevyi.skilky.ui.auth.RegisterScreen
+import com.vstorchevyi.skilky.ui.home.HomeScreen
+
+/**
+ * Builds the root nav graph. [startDestination] is decided by the caller from
+ * the persisted-session check at app start: [Route.Home] when a session is
+ * present, [Route.Login] otherwise.
+ *
+ * Sign-in and sign-up both replace the auth stack rather than stacking on top
+ * of it, so the user cannot back-stack into the login screen after signing in.
+ */
+@Composable
+fun SkilkyNavHost(
+    startDestination: Route,
+    navController: NavHostController = rememberNavController(),
+) {
+    NavHost(navController = navController, startDestination = startDestination) {
+        loginDestination(navController)
+        registerDestination(navController)
+        homeDestination(navController)
+    }
+}
+
+private fun NavGraphBuilder.loginDestination(navController: NavHostController) {
+    composable<Route.Login> {
+        LoginScreen(
+            onSignedIn = {
+                navController.navigate(Route.Home) {
+                    popUpTo<Route.Login> { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            onGoToRegister = {
+                navController.navigate(Route.Register) {
+                    launchSingleTop = true
+                }
+            },
+        )
+    }
+}
+
+private fun NavGraphBuilder.registerDestination(navController: NavHostController) {
+    composable<Route.Register> {
+        RegisterScreen(
+            onRegistered = {
+                navController.navigate(Route.Home) {
+                    popUpTo<Route.Login> { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            onGoToLogin = { navController.popBackStack() },
+        )
+    }
+}
+
+private fun NavGraphBuilder.homeDestination(navController: NavHostController) {
+    composable<Route.Home> {
+        HomeScreen(
+            onSignedOut = {
+                navController.navigate(Route.Login) {
+                    popUpTo<Route.Home> { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+        )
+    }
+}
