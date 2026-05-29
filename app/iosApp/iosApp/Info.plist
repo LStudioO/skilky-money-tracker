@@ -4,5 +4,16 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!--
+	  App Transport Security blocks cleartext HTTP by default. The dev server
+	  runs on the host machine over plain HTTP, reached via `localhost` from
+	  the iOS simulator. `NSAllowsLocalNetworking` clears cleartext for
+	  loopback and .local hostnames only; everything else still requires HTTPS.
+	-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
