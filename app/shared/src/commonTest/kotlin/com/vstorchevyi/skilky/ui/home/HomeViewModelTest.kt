@@ -56,7 +56,7 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             // Assert
-            assertEquals(HomeEffect.NavigateToLogin, sut.effects.first())
+            assertEquals(HomeEvent.NavigateToLogin, sut.events.first())
             assertTrue(repository.calls.any { it is FakeAuthRepository.Call.Logout })
         }
 

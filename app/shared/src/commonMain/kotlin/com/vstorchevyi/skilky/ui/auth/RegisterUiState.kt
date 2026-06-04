@@ -18,8 +18,8 @@ data class RegisterUiState(
                 displayName.isNotBlank()
 }
 
-sealed interface RegisterEffect {
-    data object NavigateToHome : RegisterEffect
+sealed interface RegisterEvent {
+    data object NavigateToHome : RegisterEvent
 
-    data object NavigateToLogin : RegisterEffect
+    data object NavigateToLogin : RegisterEvent
 }

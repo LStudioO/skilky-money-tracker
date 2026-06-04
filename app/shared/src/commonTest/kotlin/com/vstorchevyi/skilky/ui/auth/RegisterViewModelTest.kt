@@ -50,7 +50,7 @@ class RegisterViewModelTest {
             advanceUntilIdle()
 
             // Assert
-            assertEquals(RegisterEffect.NavigateToHome, sut.effects.first())
+            assertEquals(RegisterEvent.NavigateToHome, sut.events.first())
             val call = repository.calls.last() as FakeAuthRepository.Call.Register
             assertEquals("v@example.com", call.email)
             assertEquals("Vlad", call.displayName)
@@ -77,7 +77,7 @@ class RegisterViewModelTest {
         }
 
     @Test
-    fun `onGoToLogin emits the navigate effect without touching the repository`() =
+    fun `onGoToLogin emits the navigate event without touching the repository`() =
         runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
@@ -87,7 +87,7 @@ class RegisterViewModelTest {
             sut.onGoToLogin()
 
             // Assert
-            assertEquals(RegisterEffect.NavigateToLogin, sut.effects.first())
+            assertEquals(RegisterEvent.NavigateToLogin, sut.events.first())
             assertTrue(repository.calls.isEmpty())
         }
 

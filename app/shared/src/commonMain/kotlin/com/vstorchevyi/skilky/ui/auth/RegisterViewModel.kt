@@ -19,12 +19,12 @@ class RegisterViewModel(
     private val _state = MutableStateFlow(RegisterUiState())
     val state: StateFlow<RegisterUiState> = _state.asStateFlow()
 
-    private val _effects =
-        Channel<RegisterEffect>(
+    private val _events =
+        Channel<RegisterEvent>(
             capacity = Channel.BUFFERED,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
-    val effects = _effects.receiveAsFlow()
+    val events = _events.receiveAsFlow()
 
     fun onEmailChange(value: String) {
         _state.update { it.copy(email = value, error = null) }
@@ -39,7 +39,7 @@ class RegisterViewModel(
     }
 
     fun onGoToLogin() {
-        _effects.trySend(RegisterEffect.NavigateToLogin)
+        _events.trySend(RegisterEvent.NavigateToLogin)
     }
 
     fun onSubmit() {
@@ -56,7 +56,7 @@ class RegisterViewModel(
             when (result) {
                 is Either.Right -> {
                     _state.update { it.copy(isSubmitting = false) }
-                    _effects.trySend(RegisterEffect.NavigateToHome)
+                    _events.trySend(RegisterEvent.NavigateToHome)
                 }
 
                 is Either.Left -> {

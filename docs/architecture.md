@@ -123,8 +123,8 @@ flowchart LR
     UI[Screen] -->|method call| VM[ViewModel]
     VM -->|new state| STATE[UiState]
     STATE --> UI
-    VM -->|one-shot| EFFECT[Effect]
-    EFFECT --> UI
+    VM -->|one-shot| EVENT[Event]
+    EVENT --> UI
 ```
 
 
@@ -132,8 +132,8 @@ flowchart LR
 Each feature screen defines two types and one ViewModel:
 
 - **UiState** — immutable `data class` holding all rendered state (`isSubmitting`, `items`, `error`, ...).
-- **Effect** — `sealed interface` for one-shot signals the screen consumes once (`NavigateToHome`, `ShowSnackbar`, ...).
-- **ViewModel** — exposes `state: StateFlow<UiState>` and `effects: Flow<Effect>` (backed by a `Channel`). User actions are public methods, named `onEmailChange(value)`, `onSubmit()`, `onSignOut()`, etc. The stateful screen wires those as method references into the stateless `*ScreenContent`, which is what `@Preview` and tests render.
+- **Event** — `sealed interface` for one-shot signals the screen consumes once (`NavigateToHome`, `ShowSnackbar`, ...).
+- **ViewModel** — exposes `state: StateFlow<UiState>` and `events: Flow<Event>` (backed by a `Channel`). User actions are public methods, named `onEmailChange(value)`, `onSubmit()`, `onSignOut()`, etc. The stateful screen wires those as method references into the stateless `*ScreenContent`, which is what `@Preview` and tests render.
 
 We considered a strict MVI variant with a `sealed interface Intent` and a single `onIntent(intent)` dispatcher. It paid for itself only with event replay, middleware, or a centralized reducer, none of which are on the roadmap. Direct methods are navigable from screen to handler, refactorable by the IDE, and read like ordinary Kotlin.
 
@@ -146,7 +146,7 @@ app/shared/src/commonMain/kotlin/com/vstorchevyi/skilky/
 ├── navigation/                      # NavHost, Screen sealed class
 ├── ui/
 │   ├── theme/                       # Material 3 theme
-│   ├── screens/                     # Feature screens (*Screen + *ScreenContent + ViewModel + UiState + Effect)
+│   ├── screens/                     # Feature screens (*Screen + *ScreenContent + ViewModel + UiState + Event)
 │   │   ├── auth/
 │   │   ├── home/
 │   │   ├── input/
@@ -230,7 +230,7 @@ API calls are wrapped in `AppResult<T>` (sealed class in `:shared:core`):
 
 ### Key Patterns
 
-- **Architecture:** MVVM+. Screens call methods on the ViewModel, observe `StateFlow<UiState>`, and collect a `Flow<Effect>` for navigation and snackbars.
+- **Architecture:** MVVM+. Screens call methods on the ViewModel, observe `StateFlow<UiState>`, and collect a `Flow<Event>` for navigation and snackbars.
 - **Navigation:** Official JetBrains Navigation Compose with type-safe @Serializable routes
 - **DI:** Koin with compose-viewmodel integration (`koinViewModel()`)
 - **Online flow:** Input → server parses → preview → user confirms → save to Room + server

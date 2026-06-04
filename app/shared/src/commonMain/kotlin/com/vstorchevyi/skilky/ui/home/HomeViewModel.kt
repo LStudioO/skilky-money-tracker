@@ -19,12 +19,12 @@ class HomeViewModel(
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    private val _effects =
-        Channel<HomeEffect>(
+    private val _events =
+        Channel<HomeEvent>(
             capacity = Channel.BUFFERED,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
-    val effects = _effects.receiveAsFlow()
+    val events = _events.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -37,7 +37,7 @@ class HomeViewModel(
     fun onSignOut() {
         viewModelScope.launch {
             logout()
-            _effects.trySend(HomeEffect.NavigateToLogin)
+            _events.trySend(HomeEvent.NavigateToLogin)
         }
     }
 }

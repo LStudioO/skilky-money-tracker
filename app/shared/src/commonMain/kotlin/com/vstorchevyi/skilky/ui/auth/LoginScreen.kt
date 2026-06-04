@@ -26,7 +26,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Stateful entry point: pulls state from the [LoginViewModel] and forwards
- * the effects to the nav layer. UI lives in [LoginScreenContent], which
+ * the events to the nav layer. UI lives in [LoginScreenContent], which
  * previews and unit tests can render with hand-built state.
  */
 @Composable
@@ -38,10 +38,10 @@ fun LoginScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
-        viewModel.effects.collect { effect ->
-            when (effect) {
-                LoginEffect.NavigateToHome -> onSignedIn()
-                LoginEffect.NavigateToRegister -> onGoToRegister()
+        viewModel.events.collect { event ->
+            when (event) {
+                LoginEvent.NavigateToHome -> onSignedIn()
+                LoginEvent.NavigateToRegister -> onGoToRegister()
             }
         }
     }

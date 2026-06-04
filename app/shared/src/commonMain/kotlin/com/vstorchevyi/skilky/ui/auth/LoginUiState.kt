@@ -13,9 +13,9 @@ data class LoginUiState(
         get() = !isSubmitting && email.isNotBlank() && password.isNotBlank()
 }
 
-/** One-shot signals the screen consumes once and turns into navigation. */
-sealed interface LoginEffect {
-    data object NavigateToHome : LoginEffect
+/** One-shot events the screen consumes once and turns into navigation. */
+sealed interface LoginEvent {
+    data object NavigateToHome : LoginEvent
 
-    data object NavigateToRegister : LoginEffect
+    data object NavigateToRegister : LoginEvent
 }

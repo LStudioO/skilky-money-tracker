@@ -20,7 +20,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Stateful entry point: pulls state from the [HomeViewModel] and forwards the
- * effects to the nav layer. UI lives in [HomeScreenContent], which previews
+ * events to the nav layer. UI lives in [HomeScreenContent], which previews
  * and unit tests can render with hand-built state.
  */
 @Composable
@@ -31,9 +31,9 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
-        viewModel.effects.collect { effect ->
-            when (effect) {
-                HomeEffect.NavigateToLogin -> onSignedOut()
+        viewModel.events.collect { event ->
+            when (event) {
+                HomeEvent.NavigateToLogin -> onSignedOut()
             }
         }
     }

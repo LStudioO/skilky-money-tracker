@@ -19,12 +19,12 @@ class LoginViewModel(
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
-    private val _effects =
-        Channel<LoginEffect>(
+    private val _events =
+        Channel<LoginEvent>(
             capacity = Channel.BUFFERED,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
-    val effects = _effects.receiveAsFlow()
+    val events = _events.receiveAsFlow()
 
     fun onEmailChange(value: String) {
         _state.update { it.copy(email = value, error = null) }
@@ -35,7 +35,7 @@ class LoginViewModel(
     }
 
     fun onGoToRegister() {
-        _effects.trySend(LoginEffect.NavigateToRegister)
+        _events.trySend(LoginEvent.NavigateToRegister)
     }
 
     fun onSubmit() {
@@ -46,7 +46,7 @@ class LoginViewModel(
             when (val result = login(snapshot.email.trim(), snapshot.password)) {
                 is Either.Right -> {
                     _state.update { it.copy(isSubmitting = false) }
-                    _effects.trySend(LoginEffect.NavigateToHome)
+                    _events.trySend(LoginEvent.NavigateToHome)
                 }
 
                 is Either.Left -> {

@@ -65,7 +65,7 @@ class LoginViewModelTest {
             advanceUntilIdle()
 
             // Assert
-            assertEquals(LoginEffect.NavigateToHome, sut.effects.first())
+            assertEquals(LoginEvent.NavigateToHome, sut.events.first())
             assertFalse(sut.state.value.isSubmitting)
             val call = repository.calls.last() as FakeAuthRepository.Call.Login
             assertEquals("v@example.com", call.email)
@@ -73,7 +73,7 @@ class LoginViewModelTest {
         }
 
     @Test
-    fun `failed login surfaces the AppError in state and emits no effect`() =
+    fun `failed login surfaces the AppError in state and emits no event`() =
         runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository(loginResult = Either.Left(AppError.Unauthorized))
@@ -91,7 +91,7 @@ class LoginViewModelTest {
         }
 
     @Test
-    fun `onGoToRegister emits the navigate effect without touching the repository`() =
+    fun `onGoToRegister emits the navigate event without touching the repository`() =
         runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
@@ -101,7 +101,7 @@ class LoginViewModelTest {
             sut.onGoToRegister()
 
             // Assert
-            assertEquals(LoginEffect.NavigateToRegister, sut.effects.first())
+            assertEquals(LoginEvent.NavigateToRegister, sut.events.first())
             assertTrue(repository.calls.isEmpty())
         }
 
