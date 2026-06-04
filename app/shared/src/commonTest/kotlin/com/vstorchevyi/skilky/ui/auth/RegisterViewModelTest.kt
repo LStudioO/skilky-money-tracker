@@ -4,15 +4,10 @@ import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.FakeAuthRepository
 import com.vstorchevyi.skilky.domain.usecase.RegisterUseCase
-import kotlinx.coroutines.Dispatchers
+import com.vstorchevyi.skilky.support.runTestWithMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -20,21 +15,9 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RegisterViewModelTest {
-    private val dispatcher = StandardTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(dispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     @Test
     fun `submit with any blank field is a no-op`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
             val sut = createSut(repository = repository)
@@ -44,7 +27,7 @@ class RegisterViewModelTest {
 
             // Act
             sut.onSubmit()
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertFalse(sut.state.value.canSubmit)
@@ -53,7 +36,7 @@ class RegisterViewModelTest {
 
     @Test
     fun `successful registration trims email plus name and emits NavigateToHome`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository =
                 FakeAuthRepository(registerResult = Either.Right(FakeAuthRepository.defaultSession()))
@@ -64,7 +47,7 @@ class RegisterViewModelTest {
 
             // Act
             sut.onSubmit()
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertEquals(RegisterEffect.NavigateToHome, sut.effects.first())
@@ -76,7 +59,7 @@ class RegisterViewModelTest {
 
     @Test
     fun `taken email surfaces Conflict in state`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository(registerResult = Either.Left(AppError.Conflict))
             val sut = createSut(repository = repository)
@@ -86,7 +69,7 @@ class RegisterViewModelTest {
 
             // Act
             sut.onSubmit()
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertEquals(AppError.Conflict, sut.state.value.error)
@@ -95,7 +78,7 @@ class RegisterViewModelTest {
 
     @Test
     fun `onGoToLogin emits the navigate effect without touching the repository`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
             val sut = createSut(repository = repository)

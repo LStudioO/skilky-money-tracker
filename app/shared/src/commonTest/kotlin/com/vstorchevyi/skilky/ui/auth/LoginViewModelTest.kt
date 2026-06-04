@@ -4,15 +4,10 @@ import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.FakeAuthRepository
 import com.vstorchevyi.skilky.domain.usecase.LoginUseCase
-import kotlinx.coroutines.Dispatchers
+import com.vstorchevyi.skilky.support.runTestWithMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,21 +16,9 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
-    private val dispatcher = StandardTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(dispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     @Test
     fun `email and password edits update state and clear any prior error`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val sut = createSut()
             sut.onEmailChange("v@example.com")
@@ -53,14 +36,14 @@ class LoginViewModelTest {
 
     @Test
     fun `submit with blank fields is a no-op`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
             val sut = createSut(repository = repository)
 
             // Act
             sut.onSubmit()
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertFalse(sut.state.value.isSubmitting)
@@ -69,7 +52,7 @@ class LoginViewModelTest {
 
     @Test
     fun `successful login emits NavigateToHome and forwards the trimmed credentials`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository =
                 FakeAuthRepository(loginResult = Either.Right(FakeAuthRepository.defaultSession()))
@@ -79,7 +62,7 @@ class LoginViewModelTest {
 
             // Act
             sut.onSubmit()
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertEquals(LoginEffect.NavigateToHome, sut.effects.first())
@@ -91,7 +74,7 @@ class LoginViewModelTest {
 
     @Test
     fun `failed login surfaces the AppError in state and emits no effect`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository(loginResult = Either.Left(AppError.Unauthorized))
             val sut = createSut(repository = repository)
@@ -100,7 +83,7 @@ class LoginViewModelTest {
 
             // Act
             sut.onSubmit()
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertEquals(AppError.Unauthorized, sut.state.value.error)
@@ -109,7 +92,7 @@ class LoginViewModelTest {
 
     @Test
     fun `onGoToRegister emits the navigate effect without touching the repository`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
             val sut = createSut(repository = repository)

@@ -3,43 +3,26 @@ package com.vstorchevyi.skilky.ui.home
 import com.vstorchevyi.skilky.domain.repository.FakeAuthRepository
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
-import kotlinx.coroutines.Dispatchers
+import com.vstorchevyi.skilky.support.runTestWithMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
-    private val dispatcher = StandardTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(dispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     @Test
     fun `state reflects the persisted session at init`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
             repository.setSession(FakeAuthRepository.defaultSession())
 
             // Act
             val sut = createSut(repository = repository)
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertEquals("Vlad", sut.state.value.displayName)
@@ -48,12 +31,12 @@ class HomeViewModelTest {
 
     @Test
     fun `state stays blank when no session is stored`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val sut = createSut(repository = FakeAuthRepository())
 
             // Act
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertEquals(HomeUiState(), sut.state.value)
@@ -61,16 +44,16 @@ class HomeViewModelTest {
 
     @Test
     fun `SignOut clears the session and emits NavigateToLogin`() =
-        runTest(dispatcher) {
+        runTestWithMain {
             // Arrange
             val repository = FakeAuthRepository()
             repository.setSession(FakeAuthRepository.defaultSession())
             val sut = createSut(repository = repository)
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Act
             sut.onSignOut()
-            dispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             // Assert
             assertEquals(HomeEffect.NavigateToLogin, sut.effects.first())
