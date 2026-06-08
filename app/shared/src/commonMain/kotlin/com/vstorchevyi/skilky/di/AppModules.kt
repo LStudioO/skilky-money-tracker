@@ -14,9 +14,12 @@ import com.vstorchevyi.skilky.domain.repository.AuthRepository
 import com.vstorchevyi.skilky.domain.repository.CategoryRepository
 import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
 import com.vstorchevyi.skilky.domain.usecase.CreateCategoryUseCase
+import com.vstorchevyi.skilky.domain.usecase.CreateExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteCategoryUseCase
+import com.vstorchevyi.skilky.domain.usecase.DeleteExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
+import com.vstorchevyi.skilky.domain.usecase.GetExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.LoginUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
@@ -24,13 +27,16 @@ import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RegisterUseCase
 import com.vstorchevyi.skilky.domain.usecase.UpdateCategoryUseCase
+import com.vstorchevyi.skilky.domain.usecase.UpdateExpenseUseCase
 import com.vstorchevyi.skilky.ui.auth.LoginViewModel
 import com.vstorchevyi.skilky.ui.auth.RegisterViewModel
 import com.vstorchevyi.skilky.ui.categories.CategoriesViewModel
+import com.vstorchevyi.skilky.ui.expense.ExpenseFormViewModel
 import com.vstorchevyi.skilky.ui.home.HomeViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
@@ -79,7 +85,11 @@ internal val domainModule: Module =
         factoryOf(::UpdateCategoryUseCase)
         factoryOf(::DeleteCategoryUseCase)
         factoryOf(::GetExpensesUseCase)
+        factoryOf(::GetExpenseUseCase)
         factoryOf(::RefreshExpensesUseCase)
+        factoryOf(::CreateExpenseUseCase)
+        factoryOf(::UpdateExpenseUseCase)
+        factoryOf(::DeleteExpenseUseCase)
     }
 
 internal val presentationModule: Module =
@@ -88,6 +98,17 @@ internal val presentationModule: Module =
         viewModelOf(::RegisterViewModel)
         viewModelOf(::HomeViewModel)
         viewModelOf(::CategoriesViewModel)
+        viewModel { params ->
+            ExpenseFormViewModel(
+                expenseId = params.getOrNull(),
+                getExpense = get(),
+                getCategories = get(),
+                refreshCategories = get(),
+                createExpense = get(),
+                updateExpense = get(),
+                deleteExpense = get(),
+            )
+        }
     }
 
 val appModules: List<Module> =

@@ -1,5 +1,6 @@
 package com.vstorchevyi.skilky.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +52,8 @@ import kotlin.time.Instant
 fun HomeScreen(
     onSignedOut: () -> Unit,
     onOpenCategories: () -> Unit,
+    onAddExpense: () -> Unit,
+    onOpenExpense: (Long) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -69,6 +73,8 @@ fun HomeScreen(
         snackbarHostState = snackbarHostState,
         onOpenCategories = onOpenCategories,
         onSignOut = viewModel::onSignOut,
+        onAddExpense = onAddExpense,
+        onOpenExpense = onOpenExpense,
     )
 }
 
@@ -79,6 +85,8 @@ fun HomeScreenContent(
     snackbarHostState: SnackbarHostState,
     onOpenCategories: () -> Unit,
     onSignOut: () -> Unit,
+    onAddExpense: () -> Unit,
+    onOpenExpense: (Long) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -98,9 +106,16 @@ fun HomeScreenContent(
                 },
             )
         },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onAddExpense,
+                text = { Text("Add expense") },
+                icon = { Text("+") },
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        ExpenseList(state = state, padding = padding)
+        ExpenseList(state = state, padding = padding, onOpenExpense = onOpenExpense)
     }
 }
 
@@ -108,6 +123,7 @@ fun HomeScreenContent(
 private fun ExpenseList(
     state: HomeUiState,
     padding: PaddingValues,
+    onOpenExpense: (Long) -> Unit,
 ) {
     if (state.groups.isEmpty()) {
         Box(
@@ -124,7 +140,9 @@ private fun ExpenseList(
     LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
         state.groups.forEach { group ->
             item(key = "header-${group.date}") { DateHeader(group) }
-            items(group.items, key = { it.id }) { expense -> ExpenseRow(expense) }
+            items(group.items, key = { it.id }) { expense ->
+                ExpenseRow(expense, onClick = { onOpenExpense(expense.id) })
+            }
             item(key = "divider-${group.date}") { HorizontalDivider() }
         }
     }
@@ -144,8 +162,12 @@ private fun DateHeader(group: ExpenseGroup) {
 }
 
 @Composable
-private fun ExpenseRow(expense: Expense) {
+private fun ExpenseRow(
+    expense: Expense,
+    onClick: () -> Unit,
+) {
     ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         leadingContent = { Text(expense.category.icon) },
         headlineContent = { Text(expense.name) },
         supportingContent = { Text(expense.category.name) },
@@ -189,6 +211,8 @@ private fun HomeScreenContentEmptyPreview() {
             snackbarHostState = remember { SnackbarHostState() },
             onOpenCategories = {},
             onSignOut = {},
+            onAddExpense = {},
+            onOpenExpense = {},
         )
     }
 }
@@ -226,6 +250,8 @@ private fun HomeScreenContentPopulatedPreview() {
             snackbarHostState = remember { SnackbarHostState() },
             onOpenCategories = {},
             onSignOut = {},
+            onAddExpense = {},
+            onOpenExpense = {},
         )
     }
 }

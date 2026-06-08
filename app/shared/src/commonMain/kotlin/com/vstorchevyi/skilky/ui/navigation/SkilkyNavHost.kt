@@ -6,9 +6,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.vstorchevyi.skilky.ui.auth.LoginScreen
 import com.vstorchevyi.skilky.ui.auth.RegisterScreen
 import com.vstorchevyi.skilky.ui.categories.CategoriesScreen
+import com.vstorchevyi.skilky.ui.expense.ExpenseFormScreen
 import com.vstorchevyi.skilky.ui.home.HomeScreen
 
 /**
@@ -29,6 +31,8 @@ fun SkilkyNavHost(
         registerDestination(navController)
         homeDestination(navController)
         categoriesDestination(navController)
+        newExpenseDestination(navController)
+        editExpenseDestination(navController)
     }
 }
 
@@ -78,6 +82,16 @@ private fun NavGraphBuilder.homeDestination(navController: NavHostController) {
                     launchSingleTop = true
                 }
             },
+            onAddExpense = {
+                navController.navigate(Route.NewExpense) {
+                    launchSingleTop = true
+                }
+            },
+            onOpenExpense = { id ->
+                navController.navigate(Route.EditExpense(id)) {
+                    launchSingleTop = true
+                }
+            },
         )
     }
 }
@@ -85,5 +99,24 @@ private fun NavGraphBuilder.homeDestination(navController: NavHostController) {
 private fun NavGraphBuilder.categoriesDestination(navController: NavHostController) {
     composable<Route.Categories> {
         CategoriesScreen(onBack = { navController.popBackStack() })
+    }
+}
+
+private fun NavGraphBuilder.newExpenseDestination(navController: NavHostController) {
+    composable<Route.NewExpense> {
+        ExpenseFormScreen(
+            expenseId = null,
+            onClose = { navController.popBackStack() },
+        )
+    }
+}
+
+private fun NavGraphBuilder.editExpenseDestination(navController: NavHostController) {
+    composable<Route.EditExpense> { entry ->
+        val args = entry.toRoute<Route.EditExpense>()
+        ExpenseFormScreen(
+            expenseId = args.id,
+            onClose = { navController.popBackStack() },
+        )
     }
 }
