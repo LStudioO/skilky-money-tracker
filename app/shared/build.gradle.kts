@@ -5,6 +5,14 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
+}
+
+// Room emits per-version schema snapshots so future auto-migrations can
+// validate against the prior schema. Committed under VCS.
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kover {
@@ -27,6 +35,15 @@ kover {
 }
 
 kotlin {
+    // Suppresses the "expect/actual classes are in Beta" warning. The Room
+    // KSP generator emits `actual object <Database>Constructor` for us and
+    // there is no way to add @Suppress to generated code, so this is the
+    // only place to silence the warning. Beta or not, the feature is what
+    // Room KMP relies on.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     android {
         namespace = "com.vstorchevyi.skilky.app"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -69,6 +86,8 @@ kotlin {
             implementation(libs.koin.composeVm)
             implementation(libs.androidx.datastore.preferencesCore)
             implementation(libs.androidx.navigation.compose)
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -89,6 +108,7 @@ kotlin {
         jvmTest.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.ktor.clientMock)
+            implementation(libs.koin.test)
         }
     }
 }
@@ -99,4 +119,13 @@ compose.resources {
 
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
+
+    // Room's KSP processor must run for every Kotlin target that compiles
+    // the @Database / @Dao symbols. The `kspCommonMainMetadata` entry is the
+    // shared-symbol pass; the rest are per-target.
+    add("kspCommonMainMetadata", libs.androidx.room.compiler)
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspJvm", libs.androidx.room.compiler)
 }
