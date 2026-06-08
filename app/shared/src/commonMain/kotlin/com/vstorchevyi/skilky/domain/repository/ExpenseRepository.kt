@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
  * Create / update / delete arrive in a follow-up slice.
  */
 interface ExpenseRepository {
-    fun observe(): Flow<List<Expense>>
+    fun getExpenses(): Flow<List<Expense>>
 
     suspend fun refresh(): Either<AppError, Unit>
 }

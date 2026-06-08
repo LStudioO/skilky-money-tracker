@@ -9,8 +9,8 @@ import com.vstorchevyi.skilky.domain.model.ExpenseCategorySnapshot
 import com.vstorchevyi.skilky.domain.repository.FakeAuthRepository
 import com.vstorchevyi.skilky.domain.repository.FakeExpenseRepository
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
+import com.vstorchevyi.skilky.domain.usecase.GetExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
-import com.vstorchevyi.skilky.domain.usecase.ObserveExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
 import com.vstorchevyi.skilky.support.runTestWithMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -105,7 +105,7 @@ class HomeViewModelTest {
         HomeViewModel(
             getCurrentSession = GetCurrentSessionUseCase(auth),
             logout = LogoutUseCase(auth),
-            observeExpenses = ObserveExpensesUseCase(expenses),
+            getExpenses = GetExpensesUseCase(expenses),
             refreshExpenses = RefreshExpensesUseCase(expenses),
         )
 

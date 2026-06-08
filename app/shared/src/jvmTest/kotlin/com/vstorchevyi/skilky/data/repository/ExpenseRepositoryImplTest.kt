@@ -86,7 +86,7 @@ class ExpenseRepositoryImplTest {
 
             // Assert
             assertIs<Either.Right<Unit>>(result)
-            val cached = sut.observe().first()
+            val cached = sut.getExpenses().first()
             assertEquals(2, cached.size)
             // DAO returns newest date first.
             assertEquals("Milk", cached.first().name)
@@ -113,7 +113,7 @@ class ExpenseRepositoryImplTest {
 
             // Assert
             assertEquals(Either.Left(AppError.Network), result)
-            assertEquals(emptyList(), sut.observe().first())
+            assertEquals(emptyList(), sut.getExpenses().first())
         }
 
     private fun createSut(handler: MockRequestHandler): ExpenseRepositoryImpl {

@@ -5,8 +5,8 @@ import com.vstorchevyi.skilky.domain.repository.CategoryRepository
 import kotlinx.coroutines.flow.Flow
 
 /** Stream the user's categories from the local cache. */
-class ObserveCategoriesUseCase(
+class GetCategoriesUseCase(
     private val repository: CategoryRepository,
 ) {
-    operator fun invoke(): Flow<List<Category>> = repository.observe()
+    operator fun invoke(): Flow<List<Category>> = repository.getCategories()
 }

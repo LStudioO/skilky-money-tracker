@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Test double for [ExpenseRepository]. `observe()` is a `MutableStateFlow`
+ * Test double for [ExpenseRepository]. `getExpenses()` is a `MutableStateFlow`
  * so tests can push fresh values to simulate the DAO emitting an update.
  * `refreshResult` lets tests queue the next outcome.
  */
@@ -21,7 +21,7 @@ class FakeExpenseRepository(
 
     var refreshResult: Either<AppError, Unit> = Either.Right(Unit)
 
-    override fun observe(): Flow<List<Expense>> = expenses.asStateFlow()
+    override fun getExpenses(): Flow<List<Expense>> = expenses.asStateFlow()
 
     override suspend fun refresh(): Either<AppError, Unit> {
         calls += Call.Refresh

@@ -5,8 +5,8 @@ import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
 import kotlinx.coroutines.flow.Flow
 
 /** Stream the user's expenses from the local cache. */
-class ObserveExpensesUseCase(
+class GetExpensesUseCase(
     private val repository: ExpenseRepository,
 ) {
-    operator fun invoke(): Flow<List<Expense>> = repository.observe()
+    operator fun invoke(): Flow<List<Expense>> = repository.getExpenses()
 }

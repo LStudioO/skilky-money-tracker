@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
+import com.vstorchevyi.skilky.domain.usecase.GetExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
-import com.vstorchevyi.skilky.domain.usecase.ObserveExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val getCurrentSession: GetCurrentSessionUseCase,
     private val logout: LogoutUseCase,
-    private val observeExpenses: ObserveExpensesUseCase,
+    private val getExpenses: GetExpensesUseCase,
     private val refreshExpenses: RefreshExpensesUseCase,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeUiState())
@@ -41,7 +41,7 @@ class HomeViewModel(
                 _state.update { it.copy(displayName = user.displayName, email = user.email) }
             }
         }
-        observeExpenses()
+        getExpenses()
             .onEach { expenses ->
                 _state.update { it.copy(groups = expenses.groupByDate()) }
             }

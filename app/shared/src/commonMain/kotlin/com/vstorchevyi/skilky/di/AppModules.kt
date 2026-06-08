@@ -15,11 +15,11 @@ import com.vstorchevyi.skilky.domain.repository.CategoryRepository
 import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
 import com.vstorchevyi.skilky.domain.usecase.CreateCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteCategoryUseCase
+import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
+import com.vstorchevyi.skilky.domain.usecase.GetExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.LoginUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
-import com.vstorchevyi.skilky.domain.usecase.ObserveCategoriesUseCase
-import com.vstorchevyi.skilky.domain.usecase.ObserveExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RegisterUseCase
@@ -73,12 +73,12 @@ internal val domainModule: Module =
         factoryOf(::LoginUseCase)
         factoryOf(::LogoutUseCase)
         factoryOf(::GetCurrentSessionUseCase)
-        factoryOf(::ObserveCategoriesUseCase)
+        factoryOf(::GetCategoriesUseCase)
         factoryOf(::RefreshCategoriesUseCase)
         factoryOf(::CreateCategoryUseCase)
         factoryOf(::UpdateCategoryUseCase)
         factoryOf(::DeleteCategoryUseCase)
-        factoryOf(::ObserveExpensesUseCase)
+        factoryOf(::GetExpensesUseCase)
         factoryOf(::RefreshExpensesUseCase)
     }
 

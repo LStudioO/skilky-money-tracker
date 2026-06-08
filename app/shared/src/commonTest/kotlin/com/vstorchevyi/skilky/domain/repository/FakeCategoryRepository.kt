@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.update
 
 /**
  * Test double for [CategoryRepository]. Each method records its call on
- * [calls]; tests queue replies via the `*Result` setters. The `observe()`
+ * [calls]; tests queue replies via the `*Result` setters. The `getCategories()`
  * stream is a `MutableStateFlow` so a test can push fresh values to simulate
  * incoming DAO updates.
  */
@@ -27,7 +27,7 @@ class FakeCategoryRepository(
     var updateResult: Either<AppError, Category> = createResult
     var deleteResult: Either<AppError, Unit> = Either.Right(Unit)
 
-    override fun observe(): Flow<List<Category>> = categories.asStateFlow()
+    override fun getCategories(): Flow<List<Category>> = categories.asStateFlow()
 
     override suspend fun refresh(): Either<AppError, Unit> {
         calls += Call.Refresh
