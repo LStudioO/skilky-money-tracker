@@ -6,7 +6,7 @@ import com.vstorchevyi.skilky.domain.model.Category
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.usecase.CreateCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteCategoryUseCase
-import com.vstorchevyi.skilky.domain.usecase.ObserveCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.UpdateCategoryUseCase
 import kotlinx.coroutines.channels.BufferOverflow
@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class CategoriesViewModel(
-    private val observeCategories: ObserveCategoriesUseCase,
+    private val getCategories: GetCategoriesUseCase,
     private val refreshCategories: RefreshCategoriesUseCase,
     private val createCategory: CreateCategoryUseCase,
     private val updateCategory: UpdateCategoryUseCase,
@@ -38,7 +38,7 @@ class CategoriesViewModel(
     val events = _events.receiveAsFlow()
 
     init {
-        observeCategories()
+        getCategories()
             .onEach { list -> _state.update { it.copy(categories = list) } }
             .launchIn(viewModelScope)
         onRefresh()

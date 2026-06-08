@@ -77,7 +77,7 @@ class CategoryRepositoryImplTest {
 
             // Assert
             assertIs<Either.Right<Unit>>(result)
-            val cached = sut.observe().first()
+            val cached = sut.getCategories().first()
             assertEquals(listOf("Food", "Coffee"), cached.map { it.name })
         }
 
@@ -102,7 +102,7 @@ class CategoryRepositoryImplTest {
             // Assert
             assertIs<Either.Right<Any>>(result)
             assertEquals(HttpMethod.Post, recorded.single().method)
-            val cached = sut.observe().first()
+            val cached = sut.getCategories().first()
             assertEquals(42L, cached.single().id)
             assertEquals("Coffee", cached.single().name)
         }
@@ -128,7 +128,7 @@ class CategoryRepositoryImplTest {
             // Assert
             assertEquals(HttpMethod.Put, recorded.single().method)
             assertEquals("${ApiRoutes.Categories.ROOT}/7", recorded.single().url.encodedPath)
-            val cached = sut.observe().first().single()
+            val cached = sut.getCategories().first().single()
             assertEquals("#5C2C0F", cached.color)
         }
 
@@ -152,7 +152,7 @@ class CategoryRepositoryImplTest {
             sut.delete(1L)
 
             // Assert
-            assertTrue(sut.observe().first().isEmpty())
+            assertTrue(sut.getCategories().first().isEmpty())
         }
 
     @Test
@@ -174,7 +174,7 @@ class CategoryRepositoryImplTest {
 
             // Assert
             assertEquals(Either.Left(AppError.Conflict), result)
-            assertTrue(sut.observe().first().isEmpty())
+            assertTrue(sut.getCategories().first().isEmpty())
         }
 
     private fun createSut(handler: io.ktor.client.engine.mock.MockRequestHandler): CategoryRepositoryImpl {

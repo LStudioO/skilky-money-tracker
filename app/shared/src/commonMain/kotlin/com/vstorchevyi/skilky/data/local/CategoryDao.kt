@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 internal interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY isDefault DESC, name COLLATE NOCASE ASC")
-    fun observeAll(): Flow<List<CategoryEntity>>
+    fun getAll(): Flow<List<CategoryEntity>>
 
     @Upsert
     suspend fun upsertAll(categories: List<CategoryEntity>)

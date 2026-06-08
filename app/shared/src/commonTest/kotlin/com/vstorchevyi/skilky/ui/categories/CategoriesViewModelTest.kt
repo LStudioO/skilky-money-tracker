@@ -6,7 +6,7 @@ import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.FakeCategoryRepository
 import com.vstorchevyi.skilky.domain.usecase.CreateCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteCategoryUseCase
-import com.vstorchevyi.skilky.domain.usecase.ObserveCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.UpdateCategoryUseCase
 import com.vstorchevyi.skilky.support.runTestWithMain
@@ -223,7 +223,7 @@ class CategoriesViewModelTest {
 
     private fun createSut(repository: FakeCategoryRepository = FakeCategoryRepository()): CategoriesViewModel =
         CategoriesViewModel(
-            observeCategories = ObserveCategoriesUseCase(repository),
+            getCategories = GetCategoriesUseCase(repository),
             refreshCategories = RefreshCategoriesUseCase(repository),
             createCategory = CreateCategoryUseCase(repository),
             updateCategory = UpdateCategoryUseCase(repository),

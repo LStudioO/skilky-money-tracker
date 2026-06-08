@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
  * local cache mirrors the result on success.
  */
 interface CategoryRepository {
-    fun observe(): Flow<List<Category>>
+    fun getCategories(): Flow<List<Category>>
 
     suspend fun refresh(): Either<AppError, Unit>
 

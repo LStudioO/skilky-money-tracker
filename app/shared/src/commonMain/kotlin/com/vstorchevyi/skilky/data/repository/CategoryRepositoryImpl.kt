@@ -3,6 +3,7 @@ package com.vstorchevyi.skilky.data.repository
 import com.vstorchevyi.skilky.api.CreateCategoryRequest
 import com.vstorchevyi.skilky.api.UpdateCategoryRequest
 import com.vstorchevyi.skilky.data.local.CategoryDao
+import com.vstorchevyi.skilky.data.local.CategoryEntity
 import com.vstorchevyi.skilky.data.mapper.toDomain
 import com.vstorchevyi.skilky.data.mapper.toEntity
 import com.vstorchevyi.skilky.data.remote.CategoryApi
@@ -16,7 +17,7 @@ import kotlin.time.Clock
 
 /**
  * Cache-first wiring of [CategoryRepository]:
- * - `observe()` returns the DAO Flow, so the UI never waits on the network.
+ * - `getCategories()` returns the DAO Flow, so the UI never waits on the network.
  * - `refresh()` GETs the full list and replaces the local cache.
  * - `create/update/delete` write to the server first; the local cache
  *   mirrors the result on success and is left untouched on failure.
@@ -29,7 +30,7 @@ internal class CategoryRepositoryImpl(
     private val api: CategoryApi,
     private val clock: Clock = Clock.System,
 ) : CategoryRepository {
-    override fun observe(): Flow<List<Category>> = dao.observeAll().map { entities -> entities.map { it.toDomain() } }
+    override fun getCategories(): Flow<List<Category>> = dao.getAll().map { it.map(CategoryEntity::toDomain) }
 
     override suspend fun refresh(): Either<AppError, Unit> =
         runCatchingApi {

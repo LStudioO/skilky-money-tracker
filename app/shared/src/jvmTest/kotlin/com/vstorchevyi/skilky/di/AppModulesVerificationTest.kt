@@ -2,6 +2,7 @@ package com.vstorchevyi.skilky.di
 
 import androidx.datastore.core.DataStore
 import com.vstorchevyi.skilky.data.local.CategoryDao
+import com.vstorchevyi.skilky.data.local.ExpenseDao
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.dsl.module
@@ -35,6 +36,7 @@ class AppModulesVerificationTest {
                 listOf(
                     DataStore::class,
                     CategoryDao::class,
+                    ExpenseDao::class,
                     HttpClientEngine::class,
                 ),
         )

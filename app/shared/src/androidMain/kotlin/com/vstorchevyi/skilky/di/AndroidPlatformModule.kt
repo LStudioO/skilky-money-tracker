@@ -40,6 +40,7 @@ fun androidPlatformModule(context: Context): Module =
                 .build()
         }
         single { get<SkilkyDatabase>().categoryDao() }
+        single { get<SkilkyDatabase>().expenseDao() }
     }
 
 private const val TOKEN_STORE_FILE = "skilky_tokens.preferences_pb"

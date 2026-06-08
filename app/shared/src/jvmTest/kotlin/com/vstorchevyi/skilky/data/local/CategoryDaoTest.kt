@@ -47,7 +47,7 @@ class CategoryDaoTest {
             )
 
             // Act
-            val read = sut.observeAll().first()
+            val read = sut.getAll().first()
 
             // Assert: defaults first (Bills), then non-defaults alphabetically.
             assertEquals(listOf("Bills", "alpha", "Zebra"), read.map { it.name })
@@ -64,7 +64,7 @@ class CategoryDaoTest {
             sut.upsertAll(listOf(aCategoryEntity(id = 1, name = "New name")))
 
             // Assert
-            val read = sut.observeAll().first()
+            val read = sut.getAll().first()
             assertEquals(1, read.size)
             assertEquals("New name", read.single().name)
         }
@@ -85,7 +85,7 @@ class CategoryDaoTest {
             sut.deleteById(2)
 
             // Assert
-            val remaining = sut.observeAll().first()
+            val remaining = sut.getAll().first()
             assertEquals(listOf("Keep"), remaining.map { it.name })
         }
 
@@ -105,7 +105,7 @@ class CategoryDaoTest {
             sut.clear()
 
             // Assert
-            assertTrue(sut.observeAll().first().isEmpty())
+            assertTrue(sut.getAll().first().isEmpty())
         }
 
     private fun createSut(): CategoryDao = database.categoryDao()
