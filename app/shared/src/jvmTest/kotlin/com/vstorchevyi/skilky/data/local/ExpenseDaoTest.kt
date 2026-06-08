@@ -47,7 +47,7 @@ class ExpenseDaoTest {
             )
 
             // Act
-            val read = sut.observeAll().first()
+            val read = sut.getAll().first()
 
             // Assert
             assertEquals(listOf("today-later", "today-earlier", "yesterday"), read.map { it.name })
@@ -64,7 +64,7 @@ class ExpenseDaoTest {
             sut.upsertAll(listOf(anExpenseEntity(id = 1, name = "New")))
 
             // Assert
-            val read = sut.observeAll().first()
+            val read = sut.getAll().first()
             assertEquals(1, read.size)
             assertEquals("New", read.single().name)
         }
@@ -85,7 +85,7 @@ class ExpenseDaoTest {
             sut.clear()
 
             // Assert
-            assertTrue(sut.observeAll().first().isEmpty())
+            assertTrue(sut.getAll().first().isEmpty())
         }
 
     private fun createSut(): ExpenseDao = database.expenseDao()

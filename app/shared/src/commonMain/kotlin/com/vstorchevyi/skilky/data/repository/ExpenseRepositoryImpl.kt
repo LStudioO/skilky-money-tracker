@@ -22,7 +22,7 @@ internal class ExpenseRepositoryImpl(
     private val dao: ExpenseDao,
     private val api: ExpenseApi,
 ) : ExpenseRepository {
-    override fun getExpenses(): Flow<List<Expense>> = dao.observeAll().map { it.map(ExpenseEntity::toDomain) }
+    override fun getExpenses(): Flow<List<Expense>> = dao.getAll().map { it.map(ExpenseEntity::toDomain) }
 
     override suspend fun refresh(): Either<AppError, Unit> =
         runCatchingApi {

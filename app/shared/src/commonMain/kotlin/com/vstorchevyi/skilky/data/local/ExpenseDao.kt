@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 internal interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY dateIso DESC, createdAtMillis DESC")
-    fun observeAll(): Flow<List<ExpenseEntity>>
+    fun getAll(): Flow<List<ExpenseEntity>>
 
     @Upsert
     suspend fun upsertAll(items: List<ExpenseEntity>)

@@ -30,7 +30,7 @@ internal class CategoryRepositoryImpl(
     private val api: CategoryApi,
     private val clock: Clock = Clock.System,
 ) : CategoryRepository {
-    override fun getCategories(): Flow<List<Category>> = dao.observeAll().map { it.map(CategoryEntity::toDomain) }
+    override fun getCategories(): Flow<List<Category>> = dao.getAll().map { it.map(CategoryEntity::toDomain) }
 
     override suspend fun refresh(): Either<AppError, Unit> =
         runCatchingApi {
