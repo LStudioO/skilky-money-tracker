@@ -10,9 +10,6 @@ import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.AuthSession
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.AuthRepository
-import io.ktor.client.plugins.ResponseException
-import io.ktor.http.HttpStatusCode
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Calls [AuthApi], persists the resulting session through [TokenStorage], and
@@ -40,30 +37,9 @@ internal class AuthRepositoryImpl(
     }
 
     private suspend fun authenticate(call: suspend () -> AuthResponse): Either<AppError, AuthSession> =
-        try {
+        runCatchingApi {
             val session = call().toDomain()
             tokenStorage.save(session)
-            Either.Right(session)
-        } catch (e: ResponseException) {
-            Either.Left(e.response.status.toAppError())
-        } catch (e: CancellationException) {
-            throw e
-        } catch (
-            @Suppress("TooGenericExceptionCaught", "SwallowedException") e: Exception,
-        ) {
-            // Transport failures (no connection, DNS, timeout) have no shared
-            // supertype across platforms, so the catch-all maps them to Network.
-            Either.Left(AppError.Network)
+            session
         }
 }
-
-private fun HttpStatusCode.toAppError(): AppError =
-    when {
-        this == HttpStatusCode.Unauthorized -> AppError.Unauthorized
-        this == HttpStatusCode.Conflict -> AppError.Conflict
-        this == HttpStatusCode.UnprocessableEntity -> AppError.Validation
-        value >= HTTP_SERVER_ERROR -> AppError.Network
-        else -> AppError.Unknown
-    }
-
-private const val HTTP_SERVER_ERROR = 500

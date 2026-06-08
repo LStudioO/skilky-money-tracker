@@ -10,11 +10,8 @@ import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Category
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.CategoryRepository
-import io.ktor.client.plugins.ResponseException
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 
 /**
@@ -24,10 +21,8 @@ import kotlin.time.Clock
  * - `create/update/delete` write to the server first; the local cache
  *   mirrors the result on success and is left untouched on failure.
  *
- * Every failure collapses into an [AppError] so the domain stays
- * transport-agnostic; the mapping mirrors [AuthRepositoryImpl] for
- * consistency. Transport failures (no connection, DNS, timeout) have no
- * shared supertype across platforms and fall through the catch-all.
+ * Transport / HTTP failure handling lives in [runCatchingApi]; AppError
+ * mapping is consistent across every repository in this module.
  */
 internal class CategoryRepositoryImpl(
     private val dao: CategoryDao,
@@ -74,28 +69,4 @@ internal class CategoryRepositoryImpl(
             dao.deleteById(id)
             Unit
         }
-
-    private inline fun <T> runCatchingApi(block: () -> T): Either<AppError, T> =
-        try {
-            Either.Right(block())
-        } catch (e: ResponseException) {
-            Either.Left(e.response.status.toAppError())
-        } catch (e: CancellationException) {
-            throw e
-        } catch (
-            @Suppress("TooGenericExceptionCaught", "SwallowedException") e: Exception,
-        ) {
-            Either.Left(AppError.Network)
-        }
 }
-
-private fun HttpStatusCode.toAppError(): AppError =
-    when {
-        this == HttpStatusCode.Unauthorized -> AppError.Unauthorized
-        this == HttpStatusCode.Conflict -> AppError.Conflict
-        this == HttpStatusCode.UnprocessableEntity -> AppError.Validation
-        value >= HTTP_SERVER_ERROR -> AppError.Network
-        else -> AppError.Unknown
-    }
-
-private const val HTTP_SERVER_ERROR = 500
