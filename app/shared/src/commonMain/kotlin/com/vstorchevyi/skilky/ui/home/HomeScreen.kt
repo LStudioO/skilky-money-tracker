@@ -26,6 +26,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeScreen(
     onSignedOut: () -> Unit,
+    onOpenCategories: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -41,6 +42,7 @@ fun HomeScreen(
     HomeScreenContent(
         state = state,
         onSignOut = viewModel::onSignOut,
+        onOpenCategories = onOpenCategories,
     )
 }
 
@@ -48,6 +50,7 @@ fun HomeScreen(
 fun HomeScreenContent(
     state: HomeUiState,
     onSignOut: () -> Unit,
+    onOpenCategories: () -> Unit,
 ) {
     Column(
         modifier =
@@ -71,8 +74,14 @@ fun HomeScreenContent(
         )
 
         TextButton(
-            onClick = onSignOut,
+            onClick = onOpenCategories,
             modifier = Modifier.padding(top = 24.dp),
+        ) {
+            Text("Categories")
+        }
+        TextButton(
+            onClick = onSignOut,
+            modifier = Modifier.padding(top = 8.dp),
         ) {
             Text("Sign out")
         }
@@ -86,6 +95,7 @@ private fun HomeScreenContentPreview() {
         HomeScreenContent(
             state = HomeUiState(displayName = "Vlad", email = "v@example.com"),
             onSignOut = {},
+            onOpenCategories = {},
         )
     }
 }

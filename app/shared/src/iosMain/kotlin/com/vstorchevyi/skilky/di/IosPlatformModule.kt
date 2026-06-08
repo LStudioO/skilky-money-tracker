@@ -3,6 +3,9 @@ package com.vstorchevyi.skilky.di
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.room.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.vstorchevyi.skilky.data.local.SkilkyDatabase
 import kotlinx.cinterop.ExperimentalForeignApi
 import okio.Path.Companion.toPath
 import org.koin.core.module.Module
@@ -19,20 +22,29 @@ fun startKoinIos() {
 
 /**
  * The iOS side of the platform Koin module: a `DataStore<Preferences>` file
- * rooted under the app's Documents directory. iOS does not expose a `filesDir`
- * analogue, so the path is resolved via `NSFileManager`.
+ * plus the `SkilkyDatabase`, both rooted under the app's Documents directory.
+ * iOS does not expose a `filesDir` analogue, so the path is resolved via
+ * `NSFileManager`.
  */
 private val iosPlatformModule: Module =
     module {
         single<DataStore<Preferences>> {
             PreferenceDataStoreFactory.createWithPath(
-                produceFile = { iosTokenStorePath() },
+                produceFile = { documentsPath(TOKEN_STORE_FILE) },
             )
         }
+        single {
+            Room.databaseBuilder<SkilkyDatabase>(
+                name = documentsPath(DATABASE_FILE).toString(),
+            )
+                .setDriver(BundledSQLiteDriver())
+                .build()
+        }
+        single { get<SkilkyDatabase>().categoryDao() }
     }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun iosTokenStorePath(): okio.Path {
+private fun documentsPath(fileName: String): okio.Path {
     val documents: NSURL =
         requireNotNull(
             NSFileManager.defaultManager.URLForDirectory(
@@ -44,7 +56,8 @@ private fun iosTokenStorePath(): okio.Path {
             ),
         ) { "Documents directory was unavailable" }
     val base = requireNotNull(documents.path) { "Documents directory has no path" }
-    return "$base/$TOKEN_STORE_FILE".toPath()
+    return "$base/$fileName".toPath()
 }
 
 private const val TOKEN_STORE_FILE = "skilky_tokens.preferences_pb"
+private const val DATABASE_FILE = "skilky.db"

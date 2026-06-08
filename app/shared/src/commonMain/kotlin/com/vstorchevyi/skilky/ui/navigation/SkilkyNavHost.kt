@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.vstorchevyi.skilky.ui.auth.LoginScreen
 import com.vstorchevyi.skilky.ui.auth.RegisterScreen
+import com.vstorchevyi.skilky.ui.categories.CategoriesScreen
 import com.vstorchevyi.skilky.ui.home.HomeScreen
 
 /**
@@ -27,6 +28,7 @@ fun SkilkyNavHost(
         loginDestination(navController)
         registerDestination(navController)
         homeDestination(navController)
+        categoriesDestination(navController)
     }
 }
 
@@ -71,6 +73,17 @@ private fun NavGraphBuilder.homeDestination(navController: NavHostController) {
                     launchSingleTop = true
                 }
             },
+            onOpenCategories = {
+                navController.navigate(Route.Categories) {
+                    launchSingleTop = true
+                }
+            },
         )
+    }
+}
+
+private fun NavGraphBuilder.categoriesDestination(navController: NavHostController) {
+    composable<Route.Categories> {
+        CategoriesScreen(onBack = { navController.popBackStack() })
     }
 }
