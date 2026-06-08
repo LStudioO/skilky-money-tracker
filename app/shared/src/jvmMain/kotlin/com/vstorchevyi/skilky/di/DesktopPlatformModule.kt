@@ -32,6 +32,7 @@ val desktopPlatformModule: Module =
                 .build()
         }
         single { get<SkilkyDatabase>().categoryDao() }
+        single { get<SkilkyDatabase>().expenseDao() }
     }
 
 private fun skilkyDir(): File {

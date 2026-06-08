@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "2665c60b1887f8064d66d8ac319adf9b",
+    "identityHash": "88dd26aa6d91e763f02c6f71629765d6",
     "entities": [
       {
         "tableName": "categories",
@@ -56,11 +56,114 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "expenses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `amount` REAL NOT NULL, `currency` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `categoryName` TEXT NOT NULL, `categoryIcon` TEXT NOT NULL, `categoryColor` TEXT NOT NULL, `note` TEXT, `inputType` TEXT NOT NULL, `dateIso` TEXT NOT NULL, `createdAtMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryName",
+            "columnName": "categoryName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryIcon",
+            "columnName": "categoryIcon",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryColor",
+            "columnName": "categoryColor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "inputType",
+            "columnName": "inputType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateIso",
+            "columnName": "dateIso",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "createdAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_expenses_dateIso",
+            "unique": false,
+            "columnNames": [
+              "dateIso"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expenses_dateIso` ON `${TABLE_NAME}` (`dateIso`)"
+          },
+          {
+            "name": "index_expenses_categoryId",
+            "unique": false,
+            "columnNames": [
+              "categoryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expenses_categoryId` ON `${TABLE_NAME}` (`categoryId`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2665c60b1887f8064d66d8ac319adf9b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '88dd26aa6d91e763f02c6f71629765d6')"
     ]
   }
 }

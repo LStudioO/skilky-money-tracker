@@ -4,19 +4,24 @@ import com.vstorchevyi.skilky.data.local.DataStoreTokenStorage
 import com.vstorchevyi.skilky.data.local.TokenStorage
 import com.vstorchevyi.skilky.data.remote.AuthApi
 import com.vstorchevyi.skilky.data.remote.CategoryApi
+import com.vstorchevyi.skilky.data.remote.ExpenseApi
 import com.vstorchevyi.skilky.data.remote.SessionEvents
 import com.vstorchevyi.skilky.data.remote.createHttpClient
 import com.vstorchevyi.skilky.data.repository.AuthRepositoryImpl
 import com.vstorchevyi.skilky.data.repository.CategoryRepositoryImpl
+import com.vstorchevyi.skilky.data.repository.ExpenseRepositoryImpl
 import com.vstorchevyi.skilky.domain.repository.AuthRepository
 import com.vstorchevyi.skilky.domain.repository.CategoryRepository
+import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
 import com.vstorchevyi.skilky.domain.usecase.CreateCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
 import com.vstorchevyi.skilky.domain.usecase.LoginUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
 import com.vstorchevyi.skilky.domain.usecase.ObserveCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.ObserveExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RegisterUseCase
 import com.vstorchevyi.skilky.domain.usecase.UpdateCategoryUseCase
 import com.vstorchevyi.skilky.ui.auth.LoginViewModel
@@ -51,6 +56,7 @@ internal val networkModule: Module =
         single { createHttpClient(tokenStorage = get(), sessionEvents = get()) }
         singleOf(::AuthApi)
         singleOf(::CategoryApi)
+        singleOf(::ExpenseApi)
     }
 
 internal val dataModule: Module =
@@ -58,6 +64,7 @@ internal val dataModule: Module =
         singleOf(::DataStoreTokenStorage) bind TokenStorage::class
         singleOf(::AuthRepositoryImpl) bind AuthRepository::class
         single<CategoryRepository> { CategoryRepositoryImpl(dao = get(), api = get()) }
+        single<ExpenseRepository> { ExpenseRepositoryImpl(dao = get(), api = get()) }
     }
 
 internal val domainModule: Module =
@@ -71,6 +78,8 @@ internal val domainModule: Module =
         factoryOf(::CreateCategoryUseCase)
         factoryOf(::UpdateCategoryUseCase)
         factoryOf(::DeleteCategoryUseCase)
+        factoryOf(::ObserveExpensesUseCase)
+        factoryOf(::RefreshExpensesUseCase)
     }
 
 internal val presentationModule: Module =
