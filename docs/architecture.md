@@ -114,29 +114,28 @@ The client is not built yet. Per `docs/implementation-phases.md` the backend is
 through Phase 7; `:app:shared` still holds the Compose Multiplatform template.
 This section is the intended design, not the current state.
 
-### MVI Pattern (Model-View-Intent)
+### MVVM+ pattern
 
-Every screen follows unidirectional data flow: **Intent → ViewModel → State → UI**.
+Every screen follows unidirectional data flow: **user action → ViewModel method → new state → UI**.
 
 ```mermaid
 flowchart LR
-    UI[Screen] -->|user action| INTENT[Intent]
-    INTENT --> VM[ViewModel]
-    VM -->|new state| STATE[State]
+    UI[Screen] -->|method call| VM[ViewModel]
+    VM -->|new state| STATE[UiState]
     STATE --> UI
-    VM -->|one-shot| EFFECT[SideEffect]
-    EFFECT --> UI
+    VM -->|one-shot| EVENT[Event]
+    EVENT --> UI
 ```
 
 
 
-Each feature screen defines three things:
+Each feature screen defines two types and one ViewModel:
 
-- **State** — immutable `data class` holding all UI state (`isLoading`, `items`, `error`, etc.)
-- **Intent** — `sealed interface` of all user actions (`Submit`, `Delete`, `Refresh`, etc.)
-- **SideEffect** — `sealed interface` for one-shot events (`NavigateTo`, `ShowSnackbar`, etc.)
+- **UiState** — immutable `data class` holding all rendered state (`isSubmitting`, `items`, `error`, ...).
+- **Event** — `sealed interface` for one-shot signals the screen consumes once (`NavigateToHome`, `ShowSnackbar`, ...).
+- **ViewModel** — exposes `state: StateFlow<UiState>` and `events: Flow<Event>` (backed by a `Channel`). User actions are public methods, named `onEmailChange(value)`, `onSubmit()`, `onSignOut()`, etc. The stateful screen wires those as method references into the stateless `*ScreenContent`, which is what `@Preview` and tests render.
 
-The ViewModel exposes `StateFlow<State>` and `Channel<SideEffect>`. The Screen collects state and sends intents.
+We considered a strict MVI variant with a `sealed interface Intent` and a single `onIntent(intent)` dispatcher. It paid for itself only with event replay, middleware, or a centralized reducer, none of which are on the roadmap. Direct methods are navigable from screen to handler, refactorable by the IDE, and read like ordinary Kotlin.
 
 ### Package Structure
 
@@ -147,7 +146,7 @@ app/shared/src/commonMain/kotlin/com/vstorchevyi/skilky/
 ├── navigation/                      # NavHost, Screen sealed class
 ├── ui/
 │   ├── theme/                       # Material 3 theme
-│   ├── screens/                     # Feature screens (Screen + ViewModel + State + Intent)
+│   ├── screens/                     # Feature screens (*Screen + *ScreenContent + ViewModel + UiState + Event)
 │   │   ├── auth/
 │   │   ├── home/
 │   │   ├── input/
@@ -176,7 +175,7 @@ flowchart TD
     QUEUE[(Input Queue)]
     NET{Online?}
 
-    UI -->|intent| REPO
+    UI -->|method call| REPO
     REPO -->|read/write| ROOM
     REPO -->|online requests| API
     API -->|parse + save| ROOM
@@ -231,7 +230,7 @@ API calls are wrapped in `AppResult<T>` (sealed class in `:shared:core`):
 
 ### Key Patterns
 
-- **Architecture:** MVI — Intent → ViewModel → State → UI, with SideEffects for navigation/snackbars
+- **Architecture:** MVVM+. Screens call methods on the ViewModel, observe `StateFlow<UiState>`, and collect a `Flow<Event>` for navigation and snackbars.
 - **Navigation:** Official JetBrains Navigation Compose with type-safe @Serializable routes
 - **DI:** Koin with compose-viewmodel integration (`koinViewModel()`)
 - **Online flow:** Input → server parses → preview → user confirms → save to Room + server
