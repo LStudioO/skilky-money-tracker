@@ -21,7 +21,13 @@ internal class ParseApi(
 ) {
     suspend fun parseText(request: ParseTextRequest): ParseTextResponse =
         httpClient
-            .post(ApiRoutes.Parse.TEXT) { setBody(request) }
+            .post(ApiRoutes.Parse.TEXT) {
+                timeout {
+                    requestTimeoutMillis = TEXT_REQUEST_TIMEOUT_MILLIS
+                    socketTimeoutMillis = TEXT_REQUEST_TIMEOUT_MILLIS
+                }
+                setBody(request)
+            }
             .body()
 
     suspend fun parseAudio(
@@ -85,6 +91,7 @@ internal class ParseApi(
         size >= PNG_SIGNATURE.size && PNG_SIGNATURE.indices.all { index -> this[index] == PNG_SIGNATURE[index] }
 
     private companion object {
+        const val TEXT_REQUEST_TIMEOUT_MILLIS = 90_000L
         const val AUDIO_REQUEST_TIMEOUT_MILLIS = 180_000L
         const val AUDIO_WAV_CONTENT_TYPE = "audio/wav"
         val PNG_SIGNATURE = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)

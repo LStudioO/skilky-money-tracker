@@ -2,6 +2,7 @@ package com.vstorchevyi.skilky.data.remote
 
 import com.vstorchevyi.skilky.api.ApiRoutes
 import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.ParseTextRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -10,9 +11,11 @@ import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.url
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
@@ -22,6 +25,42 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ParseApiTest {
+    @Test
+    fun `text parse uses an extended timeout`() =
+        runTest {
+            // Arrange
+            var requestTimeoutMillis: Long? = null
+            var socketTimeoutMillis: Long? = null
+            val engine =
+                MockEngine { request ->
+                    val timeout = request.getCapabilityOrNull(HttpTimeoutCapability)
+                    requestTimeoutMillis = timeout?.requestTimeoutMillis
+                    socketTimeoutMillis = timeout?.socketTimeoutMillis
+                    respond(
+                        content =
+                            """
+                            {
+                              "items": [{"name": "Pie", "amount": 15.55, "currency": "UAH"}]
+                            }
+                            """.trimIndent(),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                }
+            val client = testClient(engine)
+
+            // Act
+            val result =
+                ParseApi(client).parseText(
+                    ParseTextRequest(text = "Pie for 15.55 UAH", currency = Currency.UAH),
+                )
+
+            // Assert
+            assertEquals(90_000L, requestTimeoutMillis)
+            assertEquals(90_000L, socketTimeoutMillis)
+            assertEquals("Pie", result.items.single().name)
+        }
+
     @Test
     fun `audio parse uploads wav as multipart form data`() =
         runTest {
@@ -147,7 +186,10 @@ class ParseApiTest {
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
-            defaultRequest { url("http://localhost") }
+            defaultRequest {
+                url("http://localhost")
+                contentType(ContentType.Application.Json)
+            }
         }
 
     private fun ByteArray.containsSequence(sequence: ByteArray): Boolean =
