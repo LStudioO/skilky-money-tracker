@@ -30,6 +30,7 @@ class FakeExpenseRepository(
 
     var refreshResult: Either<AppError, Unit> = Either.Right(Unit)
     var createResult: Either<AppError, Expense> = Either.Right(defaultExpense())
+    var createAllResult: Either<AppError, List<Expense>> = Either.Right(emptyList())
     var updateResult: Either<AppError, Expense> = Either.Right(defaultExpense())
     var deleteResult: Either<AppError, Unit> = Either.Right(Unit)
 
@@ -49,6 +50,15 @@ class FakeExpenseRepository(
             expenses.update { it + created }
         }
         return createResult
+    }
+
+    override suspend fun createAll(inputs: List<ExpenseInput>): Either<AppError, List<Expense>> {
+        calls += Call.CreateAll(inputs)
+        if (createAllResult is Either.Right) {
+            val created = (createAllResult as Either.Right<List<Expense>>).value
+            expenses.update { it + created }
+        }
+        return createAllResult
     }
 
     override suspend fun update(
@@ -80,6 +90,10 @@ class FakeExpenseRepository(
 
         data class Create(
             val input: ExpenseInput,
+        ) : Call
+
+        data class CreateAll(
+            val inputs: List<ExpenseInput>,
         ) : Call
 
         data class Update(

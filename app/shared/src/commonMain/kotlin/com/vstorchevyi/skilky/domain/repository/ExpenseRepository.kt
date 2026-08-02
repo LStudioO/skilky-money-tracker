@@ -26,6 +26,8 @@ interface ExpenseRepository {
 
     suspend fun create(input: ExpenseInput): Either<AppError, Expense>
 
+    suspend fun createAll(inputs: List<ExpenseInput>): Either<AppError, List<Expense>>
+
     suspend fun update(
         id: Long,
         input: ExpenseInput,

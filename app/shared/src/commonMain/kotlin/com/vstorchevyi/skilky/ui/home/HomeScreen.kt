@@ -37,6 +37,12 @@ import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.model.ExpenseCategorySnapshot
+import com.vstorchevyi.skilky.ui.input.InputActions
+import com.vstorchevyi.skilky.ui.input.InputEvent
+import com.vstorchevyi.skilky.ui.input.InputUiState
+import com.vstorchevyi.skilky.ui.input.InputViewModel
+import com.vstorchevyi.skilky.ui.input.ParsePreviewSheet
+import com.vstorchevyi.skilky.ui.input.QuickEntryBar
 import kotlinx.datetime.LocalDate
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToLong
@@ -55,8 +61,10 @@ fun HomeScreen(
     onAddExpense: () -> Unit,
     onOpenExpense: (Long) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
+    inputViewModel: InputViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val inputState by inputViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel) {
@@ -68,25 +76,55 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(inputViewModel) {
+        inputViewModel.events.collect { event ->
+            when (event) {
+                is InputEvent.Saved -> {
+                    val noun = if (event.count == 1) "expense" else "expenses"
+                    snackbarHostState.showSnackbar("Saved ${event.count} $noun.")
+                }
+            }
+        }
+    }
+
     HomeScreenContent(
         state = state,
+        inputState = inputState,
         snackbarHostState = snackbarHostState,
         onOpenCategories = onOpenCategories,
         onSignOut = viewModel::onSignOut,
         onAddExpense = onAddExpense,
         onOpenExpense = onOpenExpense,
+        inputActions =
+            InputActions(
+                onQueryChange = inputViewModel::onQueryChange,
+                onSubmit = inputViewModel::onSubmit,
+                onDismissPreview = inputViewModel::onDismissPreview,
+                onAddItem = inputViewModel::onAddItem,
+                onEditItem = inputViewModel::onEditItem,
+                onDoneEditing = inputViewModel::onDoneEditing,
+                onDeleteItem = inputViewModel::onDeleteItem,
+                onNameChange = inputViewModel::onNameChange,
+                onAmountChange = inputViewModel::onAmountChange,
+                onCurrencyChange = inputViewModel::onCurrencyChange,
+                onCategoryChange = inputViewModel::onCategoryChange,
+                onDateChange = inputViewModel::onDateChange,
+                onSaveAll = inputViewModel::onSaveAll,
+            ),
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreenContent(
+internal fun HomeScreenContent(
     state: HomeUiState,
+    inputState: InputUiState = InputUiState(),
     snackbarHostState: SnackbarHostState,
     onOpenCategories: () -> Unit,
     onSignOut: () -> Unit,
     onAddExpense: () -> Unit,
     onOpenExpense: (Long) -> Unit,
+    inputActions: InputActions = InputActions(),
 ) {
     Scaffold(
         topBar = {
@@ -113,9 +151,13 @@ fun HomeScreenContent(
                 icon = { Text("+") },
             )
         },
+        bottomBar = { QuickEntryBar(state = inputState, actions = inputActions) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         ExpenseList(state = state, padding = padding, onOpenExpense = onOpenExpense)
+    }
+    if (inputState.previewItems != null) {
+        ParsePreviewSheet(state = inputState, actions = inputActions)
     }
 }
 

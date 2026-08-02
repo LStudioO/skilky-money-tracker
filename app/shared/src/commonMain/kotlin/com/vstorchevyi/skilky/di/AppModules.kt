@@ -5,16 +5,20 @@ import com.vstorchevyi.skilky.data.local.TokenStorage
 import com.vstorchevyi.skilky.data.remote.AuthApi
 import com.vstorchevyi.skilky.data.remote.CategoryApi
 import com.vstorchevyi.skilky.data.remote.ExpenseApi
+import com.vstorchevyi.skilky.data.remote.ParseApi
 import com.vstorchevyi.skilky.data.remote.SessionEvents
 import com.vstorchevyi.skilky.data.remote.createHttpClient
 import com.vstorchevyi.skilky.data.repository.AuthRepositoryImpl
 import com.vstorchevyi.skilky.data.repository.CategoryRepositoryImpl
 import com.vstorchevyi.skilky.data.repository.ExpenseRepositoryImpl
+import com.vstorchevyi.skilky.data.repository.ParseRepositoryImpl
 import com.vstorchevyi.skilky.domain.repository.AuthRepository
 import com.vstorchevyi.skilky.domain.repository.CategoryRepository
 import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
+import com.vstorchevyi.skilky.domain.repository.ParseRepository
 import com.vstorchevyi.skilky.domain.usecase.CreateCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.CreateExpenseUseCase
+import com.vstorchevyi.skilky.domain.usecase.CreateExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
@@ -23,6 +27,7 @@ import com.vstorchevyi.skilky.domain.usecase.GetExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.LoginUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
+import com.vstorchevyi.skilky.domain.usecase.ParseTextUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RegisterUseCase
@@ -33,6 +38,7 @@ import com.vstorchevyi.skilky.ui.auth.RegisterViewModel
 import com.vstorchevyi.skilky.ui.categories.CategoriesViewModel
 import com.vstorchevyi.skilky.ui.expense.ExpenseFormViewModel
 import com.vstorchevyi.skilky.ui.home.HomeViewModel
+import com.vstorchevyi.skilky.ui.input.InputViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
@@ -63,6 +69,7 @@ internal val networkModule: Module =
         singleOf(::AuthApi)
         singleOf(::CategoryApi)
         singleOf(::ExpenseApi)
+        singleOf(::ParseApi)
     }
 
 internal val dataModule: Module =
@@ -71,6 +78,7 @@ internal val dataModule: Module =
         singleOf(::AuthRepositoryImpl) bind AuthRepository::class
         single<CategoryRepository> { CategoryRepositoryImpl(dao = get(), api = get()) }
         single<ExpenseRepository> { ExpenseRepositoryImpl(dao = get(), api = get()) }
+        singleOf(::ParseRepositoryImpl) bind ParseRepository::class
     }
 
 internal val domainModule: Module =
@@ -88,8 +96,10 @@ internal val domainModule: Module =
         factoryOf(::GetExpenseUseCase)
         factoryOf(::RefreshExpensesUseCase)
         factoryOf(::CreateExpenseUseCase)
+        factoryOf(::CreateExpensesUseCase)
         factoryOf(::UpdateExpenseUseCase)
         factoryOf(::DeleteExpenseUseCase)
+        factoryOf(::ParseTextUseCase)
     }
 
 internal val presentationModule: Module =
@@ -97,6 +107,7 @@ internal val presentationModule: Module =
         viewModelOf(::LoginViewModel)
         viewModelOf(::RegisterViewModel)
         viewModelOf(::HomeViewModel)
+        viewModelOf(::InputViewModel)
         viewModelOf(::CategoriesViewModel)
         viewModel { params ->
             ExpenseFormViewModel(

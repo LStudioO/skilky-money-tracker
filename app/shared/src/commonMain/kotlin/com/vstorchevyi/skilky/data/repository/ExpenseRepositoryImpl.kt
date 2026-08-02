@@ -12,6 +12,7 @@ import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.model.ExpenseInput
+import com.vstorchevyi.skilky.domain.model.map
 import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -52,13 +53,21 @@ internal class ExpenseRepositoryImpl(
             Unit
         }
 
-    override suspend fun create(input: ExpenseInput): Either<AppError, Expense> =
-        runCatchingApi {
-            val response = api.createBatch(ExpenseBatchRequest(items = listOf(input.toRequest())))
-            val created = response.items.single()
-            dao.upsertAll(listOf(created.toEntity()))
-            created.toEntity().toDomain()
+    override suspend fun create(input: ExpenseInput): Either<AppError, Expense> {
+        val result = createAll(listOf(input))
+        return result.map { it.single() }
+    }
+
+    override suspend fun createAll(inputs: List<ExpenseInput>): Either<AppError, List<Expense>> {
+        if (inputs.isEmpty()) return Either.Right(emptyList())
+        return runCatchingApi {
+            val response = api.createBatch(ExpenseBatchRequest(items = inputs.map { it.toRequest() }))
+            check(response.items.size == inputs.size) { "Expense batch response size does not match request" }
+            val entities = response.items.map { it.toEntity() }
+            dao.upsertAll(entities)
+            entities.map { it.toDomain() }
         }
+    }
 
     override suspend fun update(
         id: Long,
