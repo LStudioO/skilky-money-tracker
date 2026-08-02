@@ -1,6 +1,7 @@
 package com.vstorchevyi.skilky.ui.input
 
 import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Category
 import kotlinx.datetime.LocalDate
@@ -10,6 +11,7 @@ data class InputUiState(
     val isParsing: Boolean = false,
     val parseError: InputError? = null,
     val previewItems: List<ParseItemDraft>? = null,
+    val previewInputType: InputType = InputType.TEXT,
     val categories: List<Category> = emptyList(),
     val isSaving: Boolean = false,
     val saveError: AppError? = null,
@@ -41,6 +43,10 @@ data class ParseItemDraft(
 
 sealed interface InputError {
     data object NoItems : InputError
+
+    data object UnsupportedImage : InputError
+
+    data object ImageTooLarge : InputError
 
     data class Request(
         val error: AppError,

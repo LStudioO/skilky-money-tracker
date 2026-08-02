@@ -1,6 +1,7 @@
 package com.vstorchevyi.skilky.ui.input
 
 import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Category
@@ -11,6 +12,7 @@ import com.vstorchevyi.skilky.domain.repository.FakeExpenseRepository
 import com.vstorchevyi.skilky.domain.repository.FakeParseRepository
 import com.vstorchevyi.skilky.domain.usecase.CreateExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.ParseReceiptUseCase
 import com.vstorchevyi.skilky.domain.usecase.ParseTextUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.support.runTestWithMain
@@ -157,6 +159,110 @@ class InputViewModelTest {
         }
 
     @Test
+    fun `receipt parse opens image preview`() =
+        runTestWithMain {
+            // Arrange
+            val parser =
+                FakeParseRepository().apply {
+                    receiptResult = Either.Right(listOf(parsed("Milk", 45.0, categoryId = 7)))
+                }
+            val categories = FakeCategoryRepository(initial = listOf(category(7, "Food")))
+            val sut = createSut(parser = parser, categories = categories)
+            val image = jpegBytes()
+            advanceUntilIdle()
+
+            // Act
+            sut.onReceiptSelected(image)
+            advanceUntilIdle()
+
+            // Assert
+            assertEquals(1, parser.receiptCalls.size)
+            assertTrue(parser.receiptCalls.single().bytes.contentEquals(image))
+            assertEquals(Currency.UAH, parser.receiptCalls.single().currency)
+            assertEquals(InputType.IMAGE, sut.state.value.previewInputType)
+            assertEquals("Milk", requireNotNull(sut.state.value.previewItems).single().name)
+        }
+
+    @Test
+    fun `receipt preview saves image expenses`() =
+        runTestWithMain {
+            // Arrange
+            val parser =
+                FakeParseRepository().apply {
+                    receiptResult = Either.Right(listOf(parsed("Milk", 45.0, categoryId = 7)))
+                }
+            val categories = FakeCategoryRepository(initial = listOf(category(7, "Food")))
+            val expenses =
+                FakeExpenseRepository().apply {
+                    createAllResult = Either.Right(listOf(FakeExpenseRepository.defaultExpense(id = 1)))
+                }
+            val sut = createSut(parser = parser, categories = categories, expenses = expenses)
+            advanceUntilIdle()
+            sut.onReceiptSelected(jpegBytes())
+            advanceUntilIdle()
+
+            // Act
+            sut.onSaveAll()
+            advanceUntilIdle()
+
+            // Assert
+            val call = assertIs<FakeExpenseRepository.Call.CreateAll>(expenses.calls.last())
+            assertEquals(InputType.IMAGE, call.inputs.single().inputType)
+            assertEquals(InputEvent.Saved(1), sut.events.first())
+        }
+
+    @Test
+    fun `unsupported receipt image is rejected before parsing`() =
+        runTestWithMain {
+            // Arrange
+            val parser = FakeParseRepository()
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onReceiptSelected("not an image".encodeToByteArray())
+            advanceUntilIdle()
+
+            // Assert
+            assertTrue(parser.receiptCalls.isEmpty())
+            assertEquals(InputError.UnsupportedImage, sut.state.value.parseError)
+        }
+
+    @Test
+    fun `oversized receipt image is rejected before parsing`() =
+        runTestWithMain {
+            // Arrange
+            val parser = FakeParseRepository()
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onReceiptSelected(ByteArray(10 * 1024 * 1024 + 1))
+            advanceUntilIdle()
+
+            // Assert
+            assertTrue(parser.receiptCalls.isEmpty())
+            assertEquals(InputError.ImageTooLarge, sut.state.value.parseError)
+        }
+
+    @Test
+    fun `receipt parse failure exposes mapped error`() =
+        runTestWithMain {
+            // Arrange
+            val parser = FakeParseRepository().apply { receiptResult = Either.Left(AppError.Network) }
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onReceiptSelected(jpegBytes())
+            advanceUntilIdle()
+
+            // Assert
+            assertEquals(InputError.Request(AppError.Network), sut.state.value.parseError)
+            assertFalse(sut.state.value.isParsing)
+        }
+
+    @Test
     fun `preview items can be edited added and removed`() =
         runTestWithMain {
             // Arrange
@@ -273,12 +379,15 @@ class InputViewModelTest {
     ): InputViewModel =
         InputViewModel(
             parseText = ParseTextUseCase(parser),
+            parseReceipt = ParseReceiptUseCase(parser),
             getCategories = GetCategoriesUseCase(categories),
             refreshCategories = RefreshCategoriesUseCase(categories),
             createExpenses = CreateExpensesUseCase(expenses),
             clock = FixedClock(LocalDate(2026, 6, 8)),
             timeZone = TimeZone.UTC,
         )
+
+    private fun jpegBytes(): ByteArray = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0, 0, 0, 0, 0)
 
     private fun parsed(
         name: String,

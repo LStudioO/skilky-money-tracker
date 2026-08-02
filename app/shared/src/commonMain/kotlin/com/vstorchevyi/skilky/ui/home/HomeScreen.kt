@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,6 +44,13 @@ import com.vstorchevyi.skilky.ui.input.InputUiState
 import com.vstorchevyi.skilky.ui.input.InputViewModel
 import com.vstorchevyi.skilky.ui.input.ParsePreviewSheet
 import com.vstorchevyi.skilky.ui.input.QuickEntryBar
+import com.vstorchevyi.skilky.ui.input.rememberReceiptCameraLauncher
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.readBytes
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToLong
@@ -66,6 +74,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val inputState by inputViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val receiptLaunchers = rememberReceiptLaunchers(inputViewModel)
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -103,6 +112,9 @@ fun HomeScreen(
             InputActions(
                 onQueryChange = inputViewModel::onQueryChange,
                 onSubmit = inputViewModel::onSubmit,
+                onPickReceipt = receiptLaunchers.pick,
+                onCaptureReceipt = receiptLaunchers.capture ?: {},
+                canCaptureReceipt = receiptLaunchers.capture != null,
                 onDismissPreview = inputViewModel::onDismissPreview,
                 onAddItem = inputViewModel::onAddItem,
                 onEditItem = inputViewModel::onEditItem,
@@ -116,6 +128,36 @@ fun HomeScreen(
                 onSaveAll = inputViewModel::onSaveAll,
             ),
     )
+}
+
+private data class ReceiptLaunchers(
+    val pick: () -> Unit,
+    val capture: (() -> Unit)?,
+)
+
+@Composable
+private fun rememberReceiptLaunchers(inputViewModel: InputViewModel): ReceiptLaunchers {
+    val scope = rememberCoroutineScope()
+    val handleFile: (PlatformFile?) -> Unit = { file ->
+        if (file != null) {
+            scope.launch {
+                val bytes =
+                    try {
+                        file.readBytes()
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (
+                        @Suppress("TooGenericExceptionCaught", "SwallowedException") error: Exception,
+                    ) {
+                        null
+                    }
+                inputViewModel.onReceiptSelected(bytes)
+            }
+        }
+    }
+    val picker = rememberFilePickerLauncher(type = FileKitType.Image, onResult = handleFile)
+    val camera = rememberReceiptCameraLauncher(onResult = handleFile)
+    return ReceiptLaunchers(pick = picker::launch, capture = camera)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

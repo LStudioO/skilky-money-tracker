@@ -122,6 +122,8 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 
 > **Update (2026-05):** Server side landed alongside Phase 4. **No Whisper service, no separate vision model** — `gemma4:e4b` handles audio (WAV 16 kHz mono, ≤30-60 s) and receipt images natively via Ollama. Saves one container and one model pull. Client work (recorders, picker, UI) is still pending.
 
+> **Update (2026-08):** Receipt input is implemented on the client. Android and iOS can take a photo or choose an image; desktop can choose an image. Parsed receipt items use the existing review sheet and are saved with `InputType.IMAGE`. Audio recording remains pending.
+
 ### Deliverables
 
 - ~~Server: `WhisperService` — Ktor Client calling Speaches `/v1/audio/transcriptions`~~ (not needed)
@@ -129,8 +131,8 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 - ~~Server: Receipt vision via Ollama with LLaVA/Moondream model~~ (Gemma 4 instead)
 - Client: `AudioRecorder` (expect/actual — Android `AudioRecord`+WAV header, iOS `AVAudioRecorder` PCM)
 - Client: Audio button in `QuickEntryBar` — record, show recording indicator, send to server
-- Client: Camera/gallery image picker (expect/actual)
-- Client: Camera button in `QuickEntryBar` — capture/pick image, send to server
+- Client: Camera/gallery image picker (FileKit with platform camera launchers)
+- Client: Receipt action in `QuickEntryBar` — capture/pick image, send to server
 - ~~Docker: Add `whisper` (Speaches) service to docker-compose.yml~~ (not needed)
 - ~~Documentation: how to pull vision model (`ollama pull llava`)~~ (Gemma 4 already covers vision)
 

@@ -11,4 +11,9 @@ interface ParseRepository {
         text: String,
         currency: Currency,
     ): Either<AppError, List<ParsedExpenseItem>>
+
+    suspend fun parseReceipt(
+        bytes: ByteArray,
+        currency: Currency,
+    ): Either<AppError, List<ParsedExpenseItem>>
 }

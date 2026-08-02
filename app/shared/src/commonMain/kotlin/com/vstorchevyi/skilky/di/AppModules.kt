@@ -27,6 +27,7 @@ import com.vstorchevyi.skilky.domain.usecase.GetExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.LoginUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
+import com.vstorchevyi.skilky.domain.usecase.ParseReceiptUseCase
 import com.vstorchevyi.skilky.domain.usecase.ParseTextUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
@@ -101,6 +102,7 @@ internal val domainModule: Module =
         factoryOf(::UpdateExpenseUseCase)
         factoryOf(::DeleteExpenseUseCase)
         factoryOf(::ParseTextUseCase)
+        factoryOf(::ParseReceiptUseCase)
     }
 
 internal val presentationModule: Module =
