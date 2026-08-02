@@ -438,7 +438,10 @@ private fun DateField(
     }
 }
 
-private fun millisToLocalDate(millis: Long): LocalDate = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.UTC).date
+private fun millisToLocalDate(millis: Long): LocalDate {
+    val instant = Instant.fromEpochMilliseconds(millis)
+    return instant.toLocalDateTime(TimeZone.UTC).date
+}
 
 private fun AppError.toMessage(): String =
     when (this) {
