@@ -3,12 +3,15 @@ package com.vstorchevyi.skilky.domain.usecase
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.Expense
+import com.vstorchevyi.skilky.domain.model.ExpenseInput
 import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
-import kotlinx.coroutines.flow.Flow
 
-/** Stream a single expense by id from the local cache. */
-class GetExpenseUseCase(
+/** Saves a reviewed parse result in one batch. */
+class CreateExpensesUseCase(
     private val repository: ExpenseRepository,
 ) {
-    operator fun invoke(id: Long): Flow<Either<AppError, Expense?>> = repository.getExpense(id)
+    suspend operator fun invoke(inputs: List<ExpenseInput>): Either<AppError, List<Expense>> {
+        val result = repository.createAll(inputs)
+        return result
+    }
 }

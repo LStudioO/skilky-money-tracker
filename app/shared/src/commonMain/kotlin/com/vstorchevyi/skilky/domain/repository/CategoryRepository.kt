@@ -7,11 +7,11 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * Read-and-mutate access to the user's categories. Reads come straight off
- * the local cache (DAO `Flow`); mutations go to the server first and the
- * local cache mirrors the result on success.
+ * the local cache and preserve storage failures in the stream. Mutations go
+ * to the server first and the local cache mirrors the result on success.
  */
 interface CategoryRepository {
-    fun getCategories(): Flow<List<Category>>
+    fun getCategories(): Flow<Either<AppError, List<Category>>>
 
     suspend fun refresh(): Either<AppError, Unit>
 

@@ -248,6 +248,7 @@ private fun AppError.toMessage(): String =
         AppError.Validation -> "Check the values and try again."
         AppError.Conflict -> "That name is already in use."
         AppError.Network -> "Network problem. Check your connection."
+        AppError.Storage -> "Local data couldn't be updated. Restart the app before retrying."
         AppError.Unknown -> "Something went wrong. Please try again."
     }
 

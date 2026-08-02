@@ -6,15 +6,14 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 /**
- * One-shot signal published when the persisted session becomes invalid mid-app
- * (for example, the refresh-token call returns 401, or the server has revoked
- * the session). UI code observes this and bounces the user back to Login.
+ * One-shot signals published by bearer authentication when the persisted
+ * session becomes invalid or its local storage cannot be accessed. UI code
+ * observes these to return to Login or show a storage error.
  *
  * Implemented as a [SharedFlow] so multiple observers (the nav host and any
  * future telemetry sink) can pick it up. The replay buffer is zero so a
- * sign-out that fired before anyone subscribed is dropped, which is the right
- * behavior: the app's start-up flow already inspects the stored session
- * directly and routes accordingly.
+ * event that fired before anyone subscribed is dropped. Startup session reads
+ * report their result directly instead of using these flows.
  */
 class SessionEvents {
     private val _signedOut =
@@ -26,7 +25,20 @@ class SessionEvents {
 
     val signedOut: SharedFlow<Unit> = _signedOut.asSharedFlow()
 
+    private val _storageFailures =
+        MutableSharedFlow<Unit>(
+            replay = 0,
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
+
+    val storageFailures: SharedFlow<Unit> = _storageFailures.asSharedFlow()
+
     fun emitSignedOut() {
         _signedOut.tryEmit(Unit)
+    }
+
+    fun emitStorageFailure() {
+        _storageFailures.tryEmit(Unit)
     }
 }

@@ -22,8 +22,8 @@ interface AuthRepository {
     ): Either<AppError, AuthSession>
 
     /** The session persisted from a previous run, or null when signed out. */
-    suspend fun currentSession(): AuthSession?
+    suspend fun currentSession(): Either<AppError, AuthSession?>
 
     /** Forget the persisted session. */
-    suspend fun logout()
+    suspend fun logout(): Either<AppError, Unit>
 }

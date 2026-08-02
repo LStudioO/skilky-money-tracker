@@ -299,7 +299,7 @@ private fun FormActions(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CurrencyDropdown(
+internal fun CurrencyDropdown(
     selected: Currency,
     enabled: Boolean,
     onSelect: (Currency) -> Unit,
@@ -340,7 +340,7 @@ private fun CurrencyDropdown(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryDropdown(
+internal fun CategoryDropdown(
     categories: List<Category>,
     selectedId: Long?,
     enabled: Boolean,
@@ -390,7 +390,7 @@ private fun CategoryDropdown(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateField(
+internal fun DateField(
     date: LocalDate,
     enabled: Boolean,
     onSelect: (LocalDate) -> Unit,
@@ -449,6 +449,7 @@ private fun AppError.toMessage(): String =
         AppError.Validation -> "Check the values and try again."
         AppError.Conflict -> "Conflict. Try again."
         AppError.Network -> "Network problem. Check your connection."
+        AppError.Storage -> "The server may have saved this. Restart the app before retrying."
         AppError.Unknown -> "Something went wrong. Please try again."
     }
 

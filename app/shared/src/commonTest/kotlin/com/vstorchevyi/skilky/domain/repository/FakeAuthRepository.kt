@@ -34,14 +34,20 @@ class FakeAuthRepository(
         return loginResult
     }
 
-    override suspend fun currentSession(): AuthSession? {
+    var currentSessionResult: Either<AppError, AuthSession?>? = null
+    var logoutResult: Either<AppError, Unit> = Either.Right(Unit)
+
+    override suspend fun currentSession(): Either<AppError, AuthSession?> {
         calls += Call.CurrentSession
-        return session
+        return currentSessionResult ?: Either.Right(session)
     }
 
-    override suspend fun logout() {
+    override suspend fun logout(): Either<AppError, Unit> {
         calls += Call.Logout
-        session = null
+        if (logoutResult is Either.Right) {
+            session = null
+        }
+        return logoutResult
     }
 
     fun queueLoginResult(result: Either<AppError, AuthSession>) {

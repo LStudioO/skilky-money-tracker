@@ -88,6 +88,19 @@ class ExpenseFormViewModelTest {
         }
 
     @Test
+    fun `edit mode cache failure stops loading and emits ShowError`() =
+        runTestWithMain {
+            val expenses = FakeExpenseRepository().apply { setReadError(AppError.Storage) }
+
+            val sut = createSut(expensesRepo = expenses, expenseId = 999)
+            advanceUntilIdle()
+
+            assertEquals(false, sut.state.value.isLoading)
+            assertEquals(false, sut.state.value.notFound)
+            assertEquals(ExpenseFormEvent.ShowError(AppError.Storage), sut.events.first())
+        }
+
+    @Test
     fun `onSave in new mode calls create with parsed input`() =
         runTestWithMain {
             // Arrange

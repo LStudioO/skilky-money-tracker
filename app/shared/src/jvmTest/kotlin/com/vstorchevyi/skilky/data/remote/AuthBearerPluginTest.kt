@@ -121,6 +121,70 @@ class AuthBearerPluginTest {
         }
 
     @Test
+    fun `token read failure emits a storage failure`() =
+        runTest {
+            val storage = FakeTokenStorage(failRead = true)
+            val events = SessionEvents()
+            val engine = MockEngine { respondJson("[]") }
+            val client = createTestClient(engine, storage, events)
+            val storageFailure = async(Dispatchers.Unconfined) { events.storageFailures.first() }
+            yield()
+
+            val status = client.get(PROTECTED_PATH).status
+
+            assertEquals(HttpStatusCode.OK, status)
+            withTimeout(1_000) { storageFailure.await() }
+        }
+
+    @Test
+    fun `token save failure emits storage failure and SignedOut`() =
+        runTest {
+            val storage = FakeTokenStorage(initial = anAuthSession(), failSave = true)
+            val events = SessionEvents()
+            val engine =
+                MockEngine { request ->
+                    if (request.url.encodedPath == ApiRoutes.Auth.REFRESH) {
+                        respondJson(
+                            """
+                            {"token":"new-access","refreshToken":"new-refresh",
+                             "user":{"id":1,"email":"v@example.com","displayName":"V","defaultCurrency":"UAH"}}
+                            """.trimIndent(),
+                        )
+                    } else {
+                        respondUnauthorizedBearer()
+                    }
+                }
+            val client = createTestClient(engine, storage, events)
+            val storageFailure = async(Dispatchers.Unconfined) { events.storageFailures.first() }
+            val signedOut = async(Dispatchers.Unconfined) { events.signedOut.first() }
+            yield()
+
+            assertFailsWith<ClientRequestException> { client.get(PROTECTED_PATH) }
+
+            assertNull(storage.read())
+            withTimeout(1_000) { storageFailure.await() }
+            withTimeout(1_000) { signedOut.await() }
+        }
+
+    @Test
+    fun `token clear failure emits storage failure and SignedOut`() =
+        runTest {
+            val storage = FakeTokenStorage(initial = anAuthSession(), failClear = true)
+            val events = SessionEvents()
+            val engine = MockEngine { respondUnauthorizedBearer() }
+            val client = createTestClient(engine, storage, events)
+            val storageFailure = async(Dispatchers.Unconfined) { events.storageFailures.first() }
+            val signedOut = async(Dispatchers.Unconfined) { events.signedOut.first() }
+            yield()
+
+            assertFailsWith<ClientRequestException> { client.get(PROTECTED_PATH) }
+
+            assertNotNull(storage.read())
+            withTimeout(1_000) { storageFailure.await() }
+            withTimeout(1_000) { signedOut.await() }
+        }
+
+    @Test
     fun `auth endpoints go out without a Bearer header`() =
         runTest {
             // Arrange
@@ -181,16 +245,24 @@ class AuthBearerPluginTest {
 
 private class FakeTokenStorage(
     initial: AuthSession? = null,
+    private val failRead: Boolean = false,
+    private val failSave: Boolean = false,
+    private val failClear: Boolean = false,
 ) : TokenStorage {
     private var session: AuthSession? = initial
 
     override suspend fun save(session: AuthSession) {
+        if (failSave) error("disk unavailable")
         this.session = session
     }
 
-    override suspend fun read(): AuthSession? = session
+    override suspend fun read(): AuthSession? {
+        if (failRead) error("disk unavailable")
+        return session
+    }
 
     override suspend fun clear() {
+        if (failClear) error("disk unavailable")
         session = null
     }
 }

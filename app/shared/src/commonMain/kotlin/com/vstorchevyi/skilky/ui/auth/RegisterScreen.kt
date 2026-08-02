@@ -137,6 +137,7 @@ private fun RegisterErrorText(error: AppError) {
             AppError.Validation -> "Email, password, or name didn't pass server checks."
             AppError.Unauthorized -> "Account creation was refused. Try again."
             AppError.Network -> "Network problem. Check your connection."
+            AppError.Storage -> "Account created, but the session couldn't be saved. Sign in again."
             AppError.Unknown -> "Something went wrong. Please try again."
         }
     Text(
