@@ -71,6 +71,8 @@ data class AppConfig(
      *   socket, and overall request time.
      * @property audioTimeoutSeconds Overall and socket timeout for audio
      *   requests. Audio decoding and model cold starts need a larger budget.
+     * @property receiptTimeoutSeconds Overall and socket timeout for receipt
+     *   requests. Image decoding and OCR need a larger budget.
      * @property keepAlive How long Ollama keeps the model loaded after
      *   a request. Ollama's default is 5 minutes; bumping to 30 minutes
      *   avoids paying a ~10 s cold-start on sparse traffic. `"-1"` pins
@@ -81,6 +83,7 @@ data class AppConfig(
         val model: String,
         val timeoutSeconds: Int,
         val audioTimeoutSeconds: Int,
+        val receiptTimeoutSeconds: Int,
         val keepAlive: String,
     )
 
@@ -136,6 +139,8 @@ data class AppConfig(
                             timeoutSeconds = config.property("skilky.ai.timeoutSeconds").getString().toInt(),
                             audioTimeoutSeconds =
                                 config.property("skilky.ai.audioTimeoutSeconds").getString().toInt(),
+                            receiptTimeoutSeconds =
+                                config.property("skilky.ai.receiptTimeoutSeconds").getString().toInt(),
                             keepAlive = config.property("skilky.ai.keepAlive").getString(),
                         )
                     },

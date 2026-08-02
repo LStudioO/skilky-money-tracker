@@ -68,6 +68,10 @@ internal class ParseApi(
 
         return httpClient
             .post(ApiRoutes.Parse.RECEIPT) {
+                timeout {
+                    requestTimeoutMillis = RECEIPT_REQUEST_TIMEOUT_MILLIS
+                    socketTimeoutMillis = RECEIPT_REQUEST_TIMEOUT_MILLIS
+                }
                 setBody(
                     MultiPartFormDataContent(
                         formData {
@@ -93,6 +97,7 @@ internal class ParseApi(
     private companion object {
         const val TEXT_REQUEST_TIMEOUT_MILLIS = 90_000L
         const val AUDIO_REQUEST_TIMEOUT_MILLIS = 180_000L
+        const val RECEIPT_REQUEST_TIMEOUT_MILLIS = 180_000L
         const val AUDIO_WAV_CONTENT_TYPE = "audio/wav"
         val PNG_SIGNATURE = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
     }

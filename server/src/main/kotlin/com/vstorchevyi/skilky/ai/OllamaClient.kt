@@ -76,6 +76,21 @@ class OllamaClient(
             requestTimeoutSeconds = config.audioTimeoutSeconds,
         )
 
+    /** Sends a receipt image with the longer timeout reserved for image parsing. */
+    suspend fun chatReceiptJson(
+        systemPrompt: String,
+        userPrompt: String,
+        responseFormat: JsonObject,
+        image: ByteArray,
+    ): JsonObject =
+        executeChatJson(
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            responseFormat = responseFormat,
+            inputs = listOf(image),
+            requestTimeoutSeconds = config.receiptTimeoutSeconds,
+        )
+
     private suspend fun executeChatJson(
         systemPrompt: String,
         userPrompt: String,

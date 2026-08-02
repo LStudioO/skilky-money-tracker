@@ -123,12 +123,17 @@ class ParseApiTest {
             var requestPath = ""
             var requestContentType = ""
             var requestBody = byteArrayOf()
+            var requestTimeoutMillis: Long? = null
+            var socketTimeoutMillis: Long? = null
             val engine =
                 MockEngine { request ->
                     requestMethod = request.method
                     requestPath = request.url.encodedPath
                     requestContentType = requireNotNull(request.body.contentType).toString()
                     requestBody = request.body.toByteArray()
+                    val timeout = request.getCapabilityOrNull(HttpTimeoutCapability)
+                    requestTimeoutMillis = timeout?.requestTimeoutMillis
+                    socketTimeoutMillis = timeout?.socketTimeoutMillis
                     respond(
                         content =
                             """
@@ -156,6 +161,8 @@ class ParseApiTest {
             assertTrue(bodyText.contains("filename=\"receipt.png\""))
             assertTrue(bodyText.contains("Content-Type: image/png"))
             assertTrue(requestBody.containsSequence(image))
+            assertEquals(180_000L, requestTimeoutMillis)
+            assertEquals(180_000L, socketTimeoutMillis)
             assertEquals("Milk", result.items.single().name)
             assertEquals("MILK 45.00", result.rawText)
         }

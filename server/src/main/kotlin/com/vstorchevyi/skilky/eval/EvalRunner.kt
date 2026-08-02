@@ -30,6 +30,7 @@ internal fun main() {
                 model = model,
                 timeoutSeconds = EVAL_TIMEOUT_SECONDS,
                 audioTimeoutSeconds = EVAL_TIMEOUT_SECONDS,
+                receiptTimeoutSeconds = EVAL_TIMEOUT_SECONDS,
                 keepAlive = "30m",
             ),
         )

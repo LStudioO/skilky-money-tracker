@@ -129,11 +129,11 @@ class TextParsingService(
         val startNanos = System.nanoTime()
         val categories = loadCategories(userId)
         val raw =
-            ollamaClient.chatJson(
+            ollamaClient.chatReceiptJson(
                 systemPrompt = PromptTemplates.systemPromptReceipt(categories),
                 userPrompt = PromptTemplates.userPromptReceipt(currency),
                 responseFormat = PromptTemplates.responseSchemaReceipt,
-                inputs = listOf(image),
+                image = image,
             )
         val response = raw.decodeResponse(currency, categories, includeRawText = true)
         logParseComplete(modality = "receipt", startNanos = startNanos, response = response)
