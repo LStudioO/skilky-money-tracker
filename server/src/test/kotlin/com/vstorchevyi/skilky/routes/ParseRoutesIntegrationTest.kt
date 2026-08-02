@@ -357,7 +357,6 @@ class ParseRoutesIntegrationTest {
                 model = "gemma4:e4b",
                 timeoutSeconds = 5,
                 audioTimeoutSeconds = 10,
-                receiptTimeoutSeconds = 10,
                 keepAlive = "30m",
             )
 

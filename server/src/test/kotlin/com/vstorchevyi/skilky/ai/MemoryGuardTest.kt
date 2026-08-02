@@ -62,7 +62,6 @@ class MemoryGuardTest {
             model = "gemma4:e4b",
             timeoutSeconds = 60,
             audioTimeoutSeconds = 180,
-            receiptTimeoutSeconds = 180,
             keepAlive = "30m",
         )
 

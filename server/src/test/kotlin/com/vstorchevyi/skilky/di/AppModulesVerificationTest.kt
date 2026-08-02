@@ -80,7 +80,6 @@ class AppModulesVerificationTest {
                     model = "test-model",
                     timeoutSeconds = 30,
                     audioTimeoutSeconds = 180,
-                    receiptTimeoutSeconds = 180,
                     keepAlive = "5m",
                 ),
         )

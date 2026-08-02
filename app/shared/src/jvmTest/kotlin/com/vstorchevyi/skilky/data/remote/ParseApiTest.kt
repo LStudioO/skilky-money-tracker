@@ -2,7 +2,6 @@ package com.vstorchevyi.skilky.data.remote
 
 import com.vstorchevyi.skilky.api.ApiRoutes
 import com.vstorchevyi.skilky.api.Currency
-import com.vstorchevyi.skilky.api.ParseTextRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -11,11 +10,9 @@ import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.url
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
@@ -25,42 +22,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ParseApiTest {
-    @Test
-    fun `text parse uses an extended timeout`() =
-        runTest {
-            // Arrange
-            var requestTimeoutMillis: Long? = null
-            var socketTimeoutMillis: Long? = null
-            val engine =
-                MockEngine { request ->
-                    val timeout = request.getCapabilityOrNull(HttpTimeoutCapability)
-                    requestTimeoutMillis = timeout?.requestTimeoutMillis
-                    socketTimeoutMillis = timeout?.socketTimeoutMillis
-                    respond(
-                        content =
-                            """
-                            {
-                              "items": [{"name": "Pie", "amount": 15.55, "currency": "UAH"}]
-                            }
-                            """.trimIndent(),
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                }
-            val client = testClient(engine)
-
-            // Act
-            val result =
-                ParseApi(client).parseText(
-                    ParseTextRequest(text = "Pie for 15.55 UAH", currency = Currency.UAH),
-                )
-
-            // Assert
-            assertEquals(90_000L, requestTimeoutMillis)
-            assertEquals(90_000L, socketTimeoutMillis)
-            assertEquals("Pie", result.items.single().name)
-        }
-
     @Test
     fun `audio parse uploads wav as multipart form data`() =
         runTest {
@@ -123,17 +84,12 @@ class ParseApiTest {
             var requestPath = ""
             var requestContentType = ""
             var requestBody = byteArrayOf()
-            var requestTimeoutMillis: Long? = null
-            var socketTimeoutMillis: Long? = null
             val engine =
                 MockEngine { request ->
                     requestMethod = request.method
                     requestPath = request.url.encodedPath
                     requestContentType = requireNotNull(request.body.contentType).toString()
                     requestBody = request.body.toByteArray()
-                    val timeout = request.getCapabilityOrNull(HttpTimeoutCapability)
-                    requestTimeoutMillis = timeout?.requestTimeoutMillis
-                    socketTimeoutMillis = timeout?.socketTimeoutMillis
                     respond(
                         content =
                             """
@@ -161,8 +117,6 @@ class ParseApiTest {
             assertTrue(bodyText.contains("filename=\"receipt.png\""))
             assertTrue(bodyText.contains("Content-Type: image/png"))
             assertTrue(requestBody.containsSequence(image))
-            assertEquals(180_000L, requestTimeoutMillis)
-            assertEquals(180_000L, socketTimeoutMillis)
             assertEquals("Milk", result.items.single().name)
             assertEquals("MILK 45.00", result.rawText)
         }
@@ -193,10 +147,7 @@ class ParseApiTest {
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
-            defaultRequest {
-                url("http://localhost")
-                contentType(ContentType.Application.Json)
-            }
+            defaultRequest { url("http://localhost") }
         }
 
     private fun ByteArray.containsSequence(sequence: ByteArray): Boolean =

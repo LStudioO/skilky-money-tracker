@@ -152,33 +152,6 @@ class OllamaClientTest {
         }
     }
 
-    @Test
-    fun `chatReceiptJson uses the configured receipt timeout`() {
-        runBlocking {
-            // Arrange
-            var requestTimeoutMillis: Long? = null
-            var socketTimeoutMillis: Long? = null
-            val engine =
-                MockEngine { request ->
-                    val timeout = request.getCapabilityOrNull(HttpTimeoutCapability)
-                    requestTimeoutMillis = timeout?.requestTimeoutMillis
-                    socketTimeoutMillis = timeout?.socketTimeoutMillis
-                    respond(
-                        content = chatResponse(content = """{"items":[]}"""),
-                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                    )
-                }
-            val sut = createSut(engine)
-
-            // Act
-            sut.chatReceiptJson("system", "user", emptyFormat(), byteArrayOf(1, 2, 3))
-
-            // Assert
-            requestTimeoutMillis shouldBe 180_000L
-            socketTimeoutMillis shouldBe 180_000L
-        }
-    }
-
     private fun createSut(engine: MockEngine): OllamaClient =
         OllamaClient(
             config =
@@ -187,7 +160,6 @@ class OllamaClientTest {
                     model = "gemma4:e4b",
                     timeoutSeconds = 30,
                     audioTimeoutSeconds = 180,
-                    receiptTimeoutSeconds = 180,
                     keepAlive = "5m",
                 ),
             httpClient =
