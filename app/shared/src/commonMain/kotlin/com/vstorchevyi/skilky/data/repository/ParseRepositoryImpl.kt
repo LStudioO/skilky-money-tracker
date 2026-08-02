@@ -18,4 +18,12 @@ internal class ParseRepositoryImpl(
         runCatchingApi {
             api.parseText(ParseTextRequest(text = text, currency = currency)).items
         }
+
+    override suspend fun parseReceipt(
+        bytes: ByteArray,
+        currency: Currency,
+    ): Either<AppError, List<ParsedExpenseItem>> =
+        runCatchingApi {
+            api.parseReceipt(bytes = bytes, currency = currency).items
+        }
 }

@@ -2,7 +2,6 @@ package com.vstorchevyi.skilky.data.repository
 
 import com.vstorchevyi.skilky.api.ExpenseBatchRequest
 import com.vstorchevyi.skilky.api.ExpenseRequest
-import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.data.local.ExpenseDao
 import com.vstorchevyi.skilky.data.local.ExpenseEntity
 import com.vstorchevyi.skilky.data.local.asStorageResult
@@ -102,7 +101,7 @@ internal class ExpenseRepositoryImpl(
             currency = currency,
             categoryId = categoryId,
             note = note,
-            inputType = InputType.TEXT,
+            inputType = inputType,
             clientId = clientIdFactory(),
             date = date,
         )

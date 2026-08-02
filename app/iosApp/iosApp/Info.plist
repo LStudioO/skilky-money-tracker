@@ -4,6 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo of a receipt to extract expenses.</string>
 	<!--
 	  App Transport Security blocks cleartext HTTP by default. The dev server
 	  runs on the host machine over plain HTTP, reached via `localhost` from

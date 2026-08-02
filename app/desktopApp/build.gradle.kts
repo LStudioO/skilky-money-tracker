@@ -21,6 +21,7 @@ kover {
 
 dependencies {
     implementation(projects.app.shared)
+    implementation(libs.filekit.dialogs.compose)
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutinesSwing)
 }

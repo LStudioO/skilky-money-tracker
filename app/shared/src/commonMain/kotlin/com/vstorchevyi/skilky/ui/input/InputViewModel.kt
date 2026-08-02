@@ -3,12 +3,14 @@ package com.vstorchevyi.skilky.ui.input
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.domain.model.Category
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.ExpenseInput
 import com.vstorchevyi.skilky.domain.usecase.CreateExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.ParseReceiptUseCase
 import com.vstorchevyi.skilky.domain.usecase.ParseTextUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import kotlinx.coroutines.channels.BufferOverflow
@@ -28,6 +30,7 @@ import kotlin.time.Clock
 
 class InputViewModel(
     private val parseText: ParseTextUseCase,
+    private val parseReceipt: ParseReceiptUseCase,
     private val getCategories: GetCategoriesUseCase,
     private val refreshCategories: RefreshCategoriesUseCase,
     private val createExpenses: CreateExpensesUseCase,
@@ -92,13 +95,54 @@ class InputViewModel(
                 }
 
                 is Either.Right -> {
-                    showParsedItems(result.value)
+                    showParsedItems(result.value, InputType.TEXT)
                 }
             }
         }
     }
 
-    private fun showParsedItems(items: List<ParsedExpenseItem>) {
+    fun onReceiptSelected(bytes: ByteArray?) {
+        val snapshot = _state.value
+        when {
+            snapshot.isParsing -> {
+                Unit
+            }
+
+            bytes == null -> {
+                _state.update { it.copy(parseError = InputError.UnsupportedImage) }
+            }
+
+            bytes.size > MAX_RECEIPT_BYTES -> {
+                _state.update { it.copy(parseError = InputError.ImageTooLarge) }
+            }
+
+            !bytes.isJpegOrPng() -> {
+                _state.update { it.copy(parseError = InputError.UnsupportedImage) }
+            }
+
+            else -> {
+                _state.update { it.copy(isParsing = true, parseError = null) }
+                viewModelScope.launch {
+                    when (val result = parseReceipt(bytes, Currency.UAH)) {
+                        is Either.Left -> {
+                            _state.update {
+                                it.copy(isParsing = false, parseError = InputError.Request(result.value))
+                            }
+                        }
+
+                        is Either.Right -> {
+                            showParsedItems(result.value, InputType.IMAGE)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showParsedItems(
+        items: List<ParsedExpenseItem>,
+        inputType: InputType,
+    ) {
         if (items.isEmpty()) {
             _state.update { it.copy(isParsing = false, parseError = InputError.NoItems) }
             return
@@ -110,6 +154,7 @@ class InputViewModel(
                 isParsing = false,
                 parseError = null,
                 previewItems = items.map { item -> item.toDraft(categories, date) },
+                previewInputType = inputType,
                 saveError = null,
             )
         }
@@ -117,7 +162,13 @@ class InputViewModel(
 
     fun onDismissPreview() {
         if (_state.value.isSaving) return
-        _state.update { it.copy(previewItems = null, saveError = null) }
+        _state.update {
+            it.copy(
+                previewItems = null,
+                previewInputType = InputType.TEXT,
+                saveError = null,
+            )
+        }
     }
 
     fun onAddItem() {
@@ -181,7 +232,7 @@ class InputViewModel(
         val snapshot = _state.value
         val items = snapshot.previewItems ?: return
         if (!snapshot.canSave || snapshot.isSaving) return
-        val inputs = items.map { it.toInput() }
+        val inputs = items.map { it.toInput(snapshot.previewInputType) }
         _state.update { it.copy(isSaving = true, saveError = null) }
         viewModelScope.launch {
             when (val result = createExpenses(inputs)) {
@@ -194,6 +245,7 @@ class InputViewModel(
                         it.copy(
                             query = "",
                             previewItems = null,
+                            previewInputType = InputType.TEXT,
                             isSaving = false,
                             saveError = null,
                         )
@@ -232,7 +284,7 @@ class InputViewModel(
             date = date,
         ).resolveCategory(categories)
 
-    private fun ParseItemDraft.toInput(): ExpenseInput =
+    private fun ParseItemDraft.toInput(inputType: InputType): ExpenseInput =
         ExpenseInput(
             name = name.trim(),
             amount = requireNotNull(parsedAmount),
@@ -240,10 +292,20 @@ class InputViewModel(
             categoryId = requireNotNull(categoryId),
             note = null,
             date = date,
+            inputType = inputType,
         )
 
     private fun today(): LocalDate = clock.now().toLocalDateTime(timeZone).date
 }
+
+private fun ByteArray.isJpegOrPng(): Boolean = startsWith(JPEG_MAGIC) || startsWith(PNG_MAGIC)
+
+private fun ByteArray.startsWith(prefix: ByteArray): Boolean =
+    size >= prefix.size && prefix.indices.all { index -> this[index] == prefix[index] }
+
+private val JPEG_MAGIC = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
+private val PNG_MAGIC = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+private const val MAX_RECEIPT_BYTES = 10 * 1024 * 1024
 
 private fun ParseItemDraft.resolveCategory(categories: List<Category>): ParseItemDraft {
     if (categoryId != null) return this

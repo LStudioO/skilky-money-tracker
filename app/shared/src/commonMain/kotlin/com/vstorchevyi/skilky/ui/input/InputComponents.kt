@@ -1,6 +1,7 @@
 package com.vstorchevyi.skilky.ui.input
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,10 +12,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.AddAPhoto
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -24,6 +34,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -39,6 +53,9 @@ import kotlinx.datetime.LocalDate
 internal data class InputActions(
     val onQueryChange: (String) -> Unit = {},
     val onSubmit: () -> Unit = {},
+    val onPickReceipt: () -> Unit = {},
+    val onCaptureReceipt: () -> Unit = {},
+    val canCaptureReceipt: Boolean = false,
     val onDismissPreview: () -> Unit = {},
     val onAddItem: () -> Unit = {},
     val onEditItem: (Long) -> Unit = {},
@@ -76,6 +93,7 @@ internal fun QuickEntryBar(
                 keyboardActions = KeyboardActions(onSend = { actions.onSubmit() }),
                 modifier = Modifier.weight(1f),
             )
+            ReceiptMenu(enabled = !state.isParsing, actions = actions)
             Button(
                 onClick = actions.onSubmit,
                 enabled = state.canSubmit,
@@ -87,9 +105,48 @@ internal fun QuickEntryBar(
                         strokeWidth = 2.dp,
                     )
                 } else {
-                    Text("Send")
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Send,
+                        contentDescription = "Parse text",
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ReceiptMenu(
+    enabled: Boolean,
+    actions: InputActions,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }, enabled = enabled) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
+                contentDescription = "Scan receipt",
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (actions.canCaptureReceipt) {
+                DropdownMenuItem(
+                    text = { Text("Take photo") },
+                    leadingIcon = { Icon(Icons.Outlined.AddAPhoto, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        actions.onCaptureReceipt()
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("Choose image") },
+                leadingIcon = { Icon(Icons.Outlined.Image, contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    actions.onPickReceipt()
+                },
+            )
         }
     }
 }
@@ -279,6 +336,8 @@ private fun PreviewActions(
 private fun InputError.toMessage(): String =
     when (this) {
         InputError.NoItems -> "No expenses found. Try rephrasing."
+        InputError.UnsupportedImage -> "Choose a JPEG or PNG receipt image."
+        InputError.ImageTooLarge -> "Receipt images must be 10 MB or smaller."
         is InputError.Request -> error.toMessage()
     }
 
