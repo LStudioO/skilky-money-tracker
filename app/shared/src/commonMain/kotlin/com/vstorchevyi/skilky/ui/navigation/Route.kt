@@ -20,4 +20,12 @@ sealed interface Route {
 
     @Serializable
     data object Categories : Route
+
+    @Serializable
+    data object NewExpense : Route
+
+    @Serializable
+    data class EditExpense(
+        val id: Long,
+    ) : Route
 }
