@@ -235,6 +235,41 @@ class TextParsingServiceTest {
     }
 
     @Test
+    fun `parseAudio retries a non-empty transcript when audio returns no items`() {
+        val requestBodies = mutableListOf<String>()
+        val responses =
+            listOf(
+                """{"items":[],"transcript":"milk 45"}""",
+                """{"items":[{"name":"Milk","amount":45.0,"suggestedCategoryName":"Food","confidence":0.9}]}""",
+            )
+        var responseIndex = 0
+        val engine =
+            MockEngine { request ->
+                requestBodies += request.bodyText()
+                respond(
+                    content = ByteReadChannel(ollamaEnvelope(responses[responseIndex++])),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf("Content-Type", "application/json"),
+                )
+            }
+        val sut = createSut(engine)
+
+        val response =
+            runBlocking {
+                sut.parseAudio(audio = aWavHeader() + ByteArray(32), currency = Currency.UAH, userId = USER_ID)
+            }
+
+        response.items.single().name shouldBe "Milk"
+        response.items.single().suggestedCategoryId shouldBe ID_FOOD
+        response.transcript shouldBe "milk 45"
+        requestBodies shouldHaveSize 2
+        requestBodies[1] shouldContain "milk 45"
+        withClue("the transcript retry must be text-only") {
+            requestBodies[1].contains("\"images\"") shouldBe false
+        }
+    }
+
+    @Test
     fun `parseText request body includes stream-false, options, keep_alive, and no images`() {
         val capturing = capturingMockEngine(ollamaJson("""{"items":[]}"""))
         val sut = createSut(capturing.engine)
@@ -256,7 +291,12 @@ class TextParsingServiceTest {
     @Test
     fun `parseAudio sends audio bytes to Ollama in the images field as base64`() {
         val audio = aWavHeader() + "AUDIOPAYLOAD".toByteArray()
-        val capturingEngine = capturingMockEngine(ollamaJson("""{"items":[],"transcript":"none"}"""))
+        val capturingEngine =
+            capturingMockEngine(
+                ollamaJson(
+                    """{"items":[{"name":"Taxi","amount":1.0}],"transcript":"taxi one"}""",
+                ),
+            )
         val sut = createSut(capturingEngine.engine)
 
         runBlocking { sut.parseAudio(audio, Currency.UAH, USER_ID) }
@@ -325,21 +365,28 @@ class TextParsingServiceTest {
     // --- helpers -----------------------------------------------------------
 
     /** Wraps a JSON payload in the full Ollama `/api/chat` envelope. */
-    private fun ollamaJson(messageContent: String): MockEngine {
-        val envelope =
-            buildString {
-                append("""{"model":"gemma4:e4b","message":{"role":"assistant","content":""")
-                append(Json.encodeToString(String.serializer(), messageContent))
-                append("""},"done":true}""")
-            }
-        return MockEngine {
+    private fun ollamaJson(messageContent: String): MockEngine =
+        MockEngine {
             respond(
-                content = ByteReadChannel(envelope),
+                content = ByteReadChannel(ollamaEnvelope(messageContent)),
                 status = HttpStatusCode.OK,
                 headers = headersOf("Content-Type", "application/json"),
             )
         }
-    }
+
+    private fun ollamaEnvelope(messageContent: String): String =
+        buildString {
+            append("""{"model":"gemma4:e4b","message":{"role":"assistant","content":""")
+            append(Json.encodeToString(String.serializer(), messageContent))
+            append("""},"done":true}""")
+        }
+
+    private fun io.ktor.client.request.HttpRequestData.bodyText(): String =
+        when (val content = body) {
+            is io.ktor.http.content.TextContent -> content.text
+            is io.ktor.http.content.ByteArrayContent -> String(content.bytes(), Charsets.UTF_8)
+            else -> content.toString()
+        }
 
     private fun createSut(engine: MockEngine): TextParsingService {
         // Re-uses OllamaClient.JSON (encodeDefaults = true) so test
@@ -380,13 +427,7 @@ class TextParsingServiceTest {
         val captured = java.util.concurrent.atomic.AtomicReference("")
         val engine =
             MockEngine { request ->
-                captured.set(
-                    when (val body = request.body) {
-                        is io.ktor.http.content.TextContent -> body.text
-                        is io.ktor.http.content.ByteArrayContent -> String(body.bytes(), Charsets.UTF_8)
-                        else -> body.toString()
-                    },
-                )
+                captured.set(request.bodyText())
                 inner.config.requestHandlers.first()(this, request)
             }
         return CapturingEngine(engine) { captured.get() }

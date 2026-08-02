@@ -73,9 +73,34 @@ class TextParsingService(
                 responseFormat = PromptTemplates.responseSchemaAudio,
                 audio = audio,
             )
-        val response = raw.decodeResponse(currency, categories, includeTranscript = true)
+        val audioResponse = raw.decodeResponse(currency, categories, includeTranscript = true)
+        val response = retryTranscriptWhenAudioItemsAreEmpty(audioResponse, currency, categories)
         logParseComplete(modality = "audio", startNanos = startNanos, response = response)
         return response
+    }
+
+    private suspend fun retryTranscriptWhenAudioItemsAreEmpty(
+        audioResponse: ParseTextResponse,
+        currency: Currency,
+        categories: List<CategoryHint>,
+    ): ParseTextResponse {
+        val transcript = audioResponse.transcript?.takeIf { it.isNotBlank() }
+        if (audioResponse.items.isNotEmpty() || transcript == null) return audioResponse
+
+        val fallback =
+            try {
+                ollamaClient
+                    .chatJson(
+                        systemPrompt = PromptTemplates.systemPromptText(categories),
+                        userPrompt = PromptTemplates.userPromptText(transcript, currency),
+                        responseFormat = PromptTemplates.responseSchemaText,
+                    ).decodeResponse(currency, categories)
+            } catch (cause: AiUnavailableException) {
+                log.warn("parse.audio_fallback_failed transcript_len=${transcript.length}", cause)
+                return audioResponse
+            }
+        log.info("parse.audio_fallback transcript_len=${transcript.length} items=${fallback.items.size}")
+        return fallback.copy(transcript = transcript)
     }
 
     /**
