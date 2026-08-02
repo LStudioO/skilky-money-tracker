@@ -4,6 +4,8 @@ import com.vstorchevyi.skilky.api.CreateCategoryRequest
 import com.vstorchevyi.skilky.api.UpdateCategoryRequest
 import com.vstorchevyi.skilky.data.local.CategoryDao
 import com.vstorchevyi.skilky.data.local.CategoryEntity
+import com.vstorchevyi.skilky.data.local.asStorageResult
+import com.vstorchevyi.skilky.data.local.runCatchingStorage
 import com.vstorchevyi.skilky.data.mapper.toDomain
 import com.vstorchevyi.skilky.data.mapper.toEntity
 import com.vstorchevyi.skilky.data.remote.CategoryApi
@@ -32,7 +34,10 @@ internal class CategoryRepositoryImpl(
     private val api: CategoryApi,
     private val clock: Clock = Clock.System,
 ) : CategoryRepository {
-    override fun getCategories(): Flow<List<Category>> = dao.getAll().map { it.map(CategoryEntity::toDomain) }
+    override fun getCategories(): Flow<Either<AppError, List<Category>>> =
+        dao.getAll()
+            .map { it.map(CategoryEntity::toDomain) }
+            .asStorageResult()
 
     override suspend fun refresh(): Either<AppError, Unit> =
         runCatchingApi {

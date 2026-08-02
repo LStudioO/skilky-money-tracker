@@ -48,16 +48,30 @@ class InputViewModel(
 
     init {
         getCategories()
-            .onEach { categories ->
-                _state.update { state ->
-                    state.copy(
-                        categories = categories,
-                        previewItems = state.previewItems?.map { it.resolveCategory(categories) },
-                    )
+            .onEach { result ->
+                when (result) {
+                    is Either.Left -> {
+                        _events.trySend(InputEvent.ShowError(result.value))
+                    }
+
+                    is Either.Right -> {
+                        val categories = result.value
+                        _state.update { state ->
+                            state.copy(
+                                categories = categories,
+                                previewItems = state.previewItems?.map { it.resolveCategory(categories) },
+                            )
+                        }
+                    }
                 }
             }
             .launchIn(viewModelScope)
-        viewModelScope.launch { refreshCategories() }
+        viewModelScope.launch {
+            val result = refreshCategories()
+            if (result is Either.Left) {
+                _events.trySend(InputEvent.ShowError(result.value))
+            }
+        }
     }
 
     fun onQueryChange(value: String) {

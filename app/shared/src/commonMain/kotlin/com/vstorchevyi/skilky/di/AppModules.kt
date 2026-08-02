@@ -57,8 +57,9 @@ import org.koin.dsl.module
  * - [domainModule] — the use cases exposed to the presentation layer.
  * - [presentationModule] — the ViewModels backing each screen.
  *
- * `SkilkyDatabase` and `CategoryDao` are platform-supplied: each
- * platform module builds the database for its target and provides the DAO.
+ * `SkilkyDatabase` and its DAOs are platform-supplied. Construction failures
+ * are startup-fatal; repository operations map runtime Room and DataStore
+ * failures to `AppError.Storage`.
  *
  * Entry points (Android, iOS, desktop) start Koin with [appModules].
  */

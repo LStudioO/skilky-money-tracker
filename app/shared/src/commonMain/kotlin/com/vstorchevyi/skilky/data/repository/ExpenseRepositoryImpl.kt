@@ -5,6 +5,8 @@ import com.vstorchevyi.skilky.api.ExpenseRequest
 import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.data.local.ExpenseDao
 import com.vstorchevyi.skilky.data.local.ExpenseEntity
+import com.vstorchevyi.skilky.data.local.asStorageResult
+import com.vstorchevyi.skilky.data.local.runCatchingStorage
 import com.vstorchevyi.skilky.data.mapper.toDomain
 import com.vstorchevyi.skilky.data.mapper.toEntity
 import com.vstorchevyi.skilky.data.remote.ExpenseApi
@@ -41,9 +43,15 @@ internal class ExpenseRepositoryImpl(
     private val api: ExpenseApi,
     private val clientIdFactory: () -> String = { Uuid.random().toString() },
 ) : ExpenseRepository {
-    override fun getExpenses(): Flow<List<Expense>> = dao.getAll().map { it.map(ExpenseEntity::toDomain) }
+    override fun getExpenses(): Flow<Either<AppError, List<Expense>>> =
+        dao.getAll()
+            .map { it.map(ExpenseEntity::toDomain) }
+            .asStorageResult()
 
-    override fun getExpense(id: Long): Flow<Expense?> = dao.getById(id).map { it?.toDomain() }
+    override fun getExpense(id: Long): Flow<Either<AppError, Expense?>> =
+        dao.getById(id)
+            .map { it?.toDomain() }
+            .asStorageResult()
 
     override suspend fun refresh(): Either<AppError, Unit> =
         runCatchingApi {

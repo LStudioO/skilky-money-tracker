@@ -66,18 +66,32 @@ class ExpenseFormViewModel(
 
     init {
         observeCategories()
-        viewModelScope.launch { refreshCategories() }
+        viewModelScope.launch {
+            val result = refreshCategories()
+            if (result is Either.Left) {
+                _events.trySend(ExpenseFormEvent.ShowError(result.value))
+            }
+        }
         expenseId?.let { loadExisting(it) }
     }
 
     private fun observeCategories() {
         getCategories()
-            .onEach { categories ->
-                _state.update { current ->
-                    current.copy(
-                        categories = categories,
-                        draft = current.draft.maybeSelectDefaultCategory(categories),
-                    )
+            .onEach { result ->
+                when (result) {
+                    is Either.Left -> {
+                        _events.trySend(ExpenseFormEvent.ShowError(result.value))
+                    }
+
+                    is Either.Right -> {
+                        val categories = result.value
+                        _state.update { current ->
+                            current.copy(
+                                categories = categories,
+                                draft = current.draft.maybeSelectDefaultCategory(categories),
+                            )
+                        }
+                    }
                 }
             }
             .launchIn(viewModelScope)
@@ -85,16 +99,25 @@ class ExpenseFormViewModel(
 
     private fun loadExisting(id: Long) {
         viewModelScope.launch {
-            val existing = getExpense(id).first()
-            if (existing == null) {
-                _state.update { it.copy(isLoading = false, notFound = true) }
-                return@launch
-            }
-            _state.update { current ->
-                current.copy(
-                    isLoading = false,
-                    draft = existing.toDraft(),
-                )
+            when (val result = getExpense(id).first()) {
+                is Either.Left -> {
+                    _state.update { it.copy(isLoading = false) }
+                    _events.trySend(ExpenseFormEvent.ShowError(result.value))
+                }
+
+                is Either.Right -> {
+                    val existing = result.value
+                    if (existing == null) {
+                        _state.update { it.copy(isLoading = false, notFound = true) }
+                    } else {
+                        _state.update { current ->
+                            current.copy(
+                                isLoading = false,
+                                draft = existing.toDraft(),
+                            )
+                        }
+                    }
+                }
             }
         }
     }

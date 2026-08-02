@@ -39,7 +39,12 @@ class CategoriesViewModel(
 
     init {
         getCategories()
-            .onEach { list -> _state.update { it.copy(categories = list) } }
+            .onEach { result ->
+                when (result) {
+                    is Either.Left -> _events.trySend(CategoriesEvent.ShowError(result.value))
+                    is Either.Right -> _state.update { it.copy(categories = result.value) }
+                }
+            }
             .launchIn(viewModelScope)
         onRefresh()
     }

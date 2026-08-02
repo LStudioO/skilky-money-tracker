@@ -7,6 +7,7 @@ import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.model.ExpenseCategorySnapshot
 import com.vstorchevyi.skilky.domain.model.ExpenseInput
+import com.vstorchevyi.skilky.domain.model.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,7 @@ class FakeExpenseRepository(
 ) : ExpenseRepository {
     val calls: MutableList<Call> = mutableListOf()
 
-    private val expenses = MutableStateFlow(initial)
+    private val expenses = MutableStateFlow<Either<AppError, List<Expense>>>(Either.Right(initial))
 
     var refreshResult: Either<AppError, Unit> = Either.Right(Unit)
     var createResult: Either<AppError, Expense> = Either.Right(defaultExpense())
@@ -34,9 +35,12 @@ class FakeExpenseRepository(
     var updateResult: Either<AppError, Expense> = Either.Right(defaultExpense())
     var deleteResult: Either<AppError, Unit> = Either.Right(Unit)
 
-    override fun getExpenses(): Flow<List<Expense>> = expenses.asStateFlow()
+    override fun getExpenses(): Flow<Either<AppError, List<Expense>>> = expenses.asStateFlow()
 
-    override fun getExpense(id: Long): Flow<Expense?> = expenses.asStateFlow().map { list -> list.firstOrNull { it.id == id } }
+    override fun getExpense(id: Long): Flow<Either<AppError, Expense?>> =
+        expenses.asStateFlow().map { result ->
+            result.map { list -> list.firstOrNull { it.id == id } }
+        }
 
     override suspend fun refresh(): Either<AppError, Unit> {
         calls += Call.Refresh
@@ -47,7 +51,7 @@ class FakeExpenseRepository(
         calls += Call.Create(input)
         if (createResult is Either.Right) {
             val created = (createResult as Either.Right<Expense>).value
-            expenses.update { it + created }
+            expenses.update { result -> result.map { it + created } }
         }
         return createResult
     }
@@ -56,7 +60,7 @@ class FakeExpenseRepository(
         calls += Call.CreateAll(inputs)
         if (createAllResult is Either.Right) {
             val created = (createAllResult as Either.Right<List<Expense>>).value
-            expenses.update { it + created }
+            expenses.update { result -> result.map { it + created } }
         }
         return createAllResult
     }
@@ -68,7 +72,7 @@ class FakeExpenseRepository(
         calls += Call.Update(id, input)
         if (updateResult is Either.Right) {
             val updated = (updateResult as Either.Right<Expense>).value
-            expenses.update { list -> list.map { if (it.id == id) updated else it } }
+            expenses.update { result -> result.map { list -> list.map { if (it.id == id) updated else it } } }
         }
         return updateResult
     }
@@ -76,13 +80,17 @@ class FakeExpenseRepository(
     override suspend fun delete(id: Long): Either<AppError, Unit> {
         calls += Call.Delete(id)
         if (deleteResult is Either.Right) {
-            expenses.update { list -> list.filterNot { it.id == id } }
+            expenses.update { result -> result.map { list -> list.filterNot { it.id == id } } }
         }
         return deleteResult
     }
 
     fun setExpenses(value: List<Expense>) {
-        expenses.value = value
+        expenses.value = Either.Right(value)
+    }
+
+    fun setReadError(error: AppError) {
+        expenses.value = Either.Left(error)
     }
 
     sealed interface Call {

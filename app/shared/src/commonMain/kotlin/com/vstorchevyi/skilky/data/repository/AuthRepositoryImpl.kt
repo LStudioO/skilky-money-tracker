@@ -4,6 +4,7 @@ import com.vstorchevyi.skilky.api.AuthResponse
 import com.vstorchevyi.skilky.api.LoginRequest
 import com.vstorchevyi.skilky.api.RegisterRequest
 import com.vstorchevyi.skilky.data.local.TokenStorage
+import com.vstorchevyi.skilky.data.local.runCatchingStorage
 import com.vstorchevyi.skilky.data.mapper.toDomain
 import com.vstorchevyi.skilky.data.remote.AuthApi
 import com.vstorchevyi.skilky.domain.model.AppError
@@ -32,11 +33,9 @@ internal class AuthRepositoryImpl(
         password: String,
     ): Either<AppError, AuthSession> = authenticate { authApi.login(LoginRequest(email, password)) }
 
-    override suspend fun currentSession(): AuthSession? = tokenStorage.read()
+    override suspend fun currentSession(): Either<AppError, AuthSession?> = runCatchingStorage { tokenStorage.read() }
 
-    override suspend fun logout() {
-        tokenStorage.clear()
-    }
+    override suspend fun logout(): Either<AppError, Unit> = runCatchingStorage { tokenStorage.clear() }
 
     private suspend fun authenticate(call: suspend () -> AuthResponse): Either<AppError, AuthSession> =
         runCatchingApi { call().toDomain() }

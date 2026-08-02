@@ -1,7 +1,12 @@
 package com.vstorchevyi.skilky.data.repository
 
+import com.vstorchevyi.skilky.data.local.asStorageResult
+import com.vstorchevyi.skilky.data.local.runCatchingStorage
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,4 +31,15 @@ class StorageErrorMappingTest {
             runCatchingStorage<Unit> { throw CancellationException("cancelled") }
         }
     }
+
+    @Test
+    fun `storage flow exception emits Storage`() =
+        runTest {
+            val result =
+                flow<Int> { error("database unavailable") }
+                    .asStorageResult()
+                    .first()
+
+            assertEquals(Either.Left(AppError.Storage), result)
+        }
 }

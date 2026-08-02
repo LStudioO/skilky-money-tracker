@@ -10,6 +10,7 @@ import com.vstorchevyi.skilky.data.remote.ExpenseApi
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.ExpenseInput
+import com.vstorchevyi.skilky.domain.model.getOrNull
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -26,6 +27,7 @@ import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -58,6 +60,22 @@ class ExpenseRepositoryImplTest {
         database.close()
         tempDir.deleteRecursively()
     }
+
+    @Test
+    fun `expense list cache read failure emits Storage`() =
+        runTest {
+            val sut = createSut(handler = { respondJson("{}") }, dao = FailingReadExpenseDao())
+
+            assertEquals(Either.Left(AppError.Storage), sut.getExpenses().first())
+        }
+
+    @Test
+    fun `single expense cache read failure emits Storage`() =
+        runTest {
+            val sut = createSut(handler = { respondJson("{}") }, dao = FailingReadExpenseDao())
+
+            assertEquals(Either.Left(AppError.Storage), sut.getExpense(1).first())
+        }
 
     @Test
     fun `refresh replaces the local cache with the server page`() =
@@ -93,7 +111,7 @@ class ExpenseRepositoryImplTest {
 
             // Assert
             assertIs<Either.Right<Unit>>(result)
-            val cached = sut.getExpenses().first()
+            val cached = requireNotNull(sut.getExpenses().first().getOrNull())
             assertEquals(2, cached.size)
             // DAO returns newest date first.
             assertEquals("Milk", cached.first().name)
@@ -120,7 +138,7 @@ class ExpenseRepositoryImplTest {
 
             // Assert
             assertEquals(Either.Left(AppError.Network), result)
-            assertEquals(emptyList(), sut.getExpenses().first())
+            assertEquals(emptyList(), sut.getExpenses().first().getOrNull())
         }
 
     @Test
@@ -235,6 +253,18 @@ class ExpenseRepositoryImplTest {
         override suspend fun deleteById(id: Long) {
             error("disk unavailable")
         }
+
+        override suspend fun clear() = Unit
+    }
+
+    private class FailingReadExpenseDao : ExpenseDao {
+        override fun getAll(): Flow<List<ExpenseEntity>> = flow { error("disk unavailable") }
+
+        override fun getById(id: Long): Flow<ExpenseEntity?> = flow { error("disk unavailable") }
+
+        override suspend fun upsertAll(items: List<ExpenseEntity>) = Unit
+
+        override suspend fun deleteById(id: Long) = Unit
 
         override suspend fun clear() = Unit
     }

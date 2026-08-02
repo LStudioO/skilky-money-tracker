@@ -37,13 +37,24 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            getCurrentSession()?.user?.let { user ->
-                _state.update { it.copy(displayName = user.displayName, email = user.email) }
+            when (val result = getCurrentSession()) {
+                is Either.Left -> {
+                    _events.trySend(HomeEvent.ShowError(result.value))
+                }
+
+                is Either.Right -> {
+                    result.value?.user?.let { user ->
+                        _state.update { it.copy(displayName = user.displayName, email = user.email) }
+                    }
+                }
             }
         }
         getExpenses()
-            .onEach { expenses ->
-                _state.update { it.copy(groups = expenses.groupByDate()) }
+            .onEach { result ->
+                when (result) {
+                    is Either.Left -> _events.trySend(HomeEvent.ShowError(result.value))
+                    is Either.Right -> _state.update { it.copy(groups = result.value.groupByDate()) }
+                }
             }
             .launchIn(viewModelScope)
         onRefresh()
@@ -63,8 +74,10 @@ class HomeViewModel(
 
     fun onSignOut() {
         viewModelScope.launch {
-            logout()
-            _events.trySend(HomeEvent.NavigateToLogin)
+            when (val result = logout()) {
+                is Either.Left -> _events.trySend(HomeEvent.ShowError(result.value))
+                is Either.Right -> _events.trySend(HomeEvent.NavigateToLogin)
+            }
         }
     }
 }

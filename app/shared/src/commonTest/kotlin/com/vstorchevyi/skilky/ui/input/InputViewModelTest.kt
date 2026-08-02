@@ -31,6 +31,17 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class InputViewModelTest {
     @Test
+    fun `category cache read failure emits ShowError`() =
+        runTestWithMain {
+            val categories = FakeCategoryRepository().apply { setReadError(AppError.Storage) }
+
+            val sut = createSut(categories = categories)
+            advanceUntilIdle()
+
+            assertEquals(InputEvent.ShowError(AppError.Storage), sut.events.first())
+        }
+
+    @Test
     fun `blank query does not start parsing`() =
         runTestWithMain {
             // Arrange

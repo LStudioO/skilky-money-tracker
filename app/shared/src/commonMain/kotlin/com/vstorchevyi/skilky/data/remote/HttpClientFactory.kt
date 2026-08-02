@@ -4,7 +4,9 @@ import com.vstorchevyi.skilky.api.ApiRoutes
 import com.vstorchevyi.skilky.api.AuthResponse
 import com.vstorchevyi.skilky.api.RefreshRequest
 import com.vstorchevyi.skilky.data.local.TokenStorage
+import com.vstorchevyi.skilky.data.local.runCatchingStorage
 import com.vstorchevyi.skilky.data.mapper.toDomain
+import com.vstorchevyi.skilky.domain.model.Either
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
@@ -69,8 +71,17 @@ internal fun HttpClientConfig<*>.skilkyClientConfig(
     install(Auth) {
         bearer {
             loadTokens {
-                tokenStorage.read()?.let { session ->
-                    BearerTokens(session.accessToken, session.refreshToken)
+                when (val stored = runCatchingStorage { tokenStorage.read() }) {
+                    is Either.Left -> {
+                        sessionEvents.emitStorageFailure()
+                        null
+                    }
+
+                    is Either.Right -> {
+                        stored.value?.let { session ->
+                            BearerTokens(session.accessToken, session.refreshToken)
+                        }
+                    }
                 }
             }
             refreshTokens {
@@ -94,7 +105,17 @@ private suspend fun refresh(
     sessionEvents: SessionEvents,
     client: HttpClient,
 ): BearerTokens? {
-    val current = tokenStorage.read()
+    val current =
+        when (val stored = runCatchingStorage { tokenStorage.read() }) {
+            is Either.Left -> {
+                sessionEvents.emitStorageFailure()
+                return null
+            }
+
+            is Either.Right -> {
+                stored.value
+            }
+        }
     if (current == null) {
         sessionEvents.emitSignedOut()
         return null
@@ -106,8 +127,16 @@ private suspend fun refresh(
                 setBody(RefreshRequest(current.refreshToken))
             }
         val rotated = response.body<AuthResponse>().toDomain()
-        tokenStorage.save(rotated)
-        BearerTokens(rotated.accessToken, rotated.refreshToken)
+        when (runCatchingStorage { tokenStorage.save(rotated) }) {
+            is Either.Left -> {
+                clearSession(tokenStorage, sessionEvents, storageFailureAlreadyReported = true)
+                null
+            }
+
+            is Either.Right -> {
+                BearerTokens(rotated.accessToken, rotated.refreshToken)
+            }
+        }
     } catch (e: CancellationException) {
         throw e
     } catch (
@@ -116,10 +145,21 @@ private suspend fun refresh(
         // Refresh itself failed (server rejected the token, the network
         // dropped, the JSON didn't parse). Drop the persisted session and
         // signal the UI; the auth plugin will let the original 401 propagate.
-        tokenStorage.clear()
-        sessionEvents.emitSignedOut()
+        clearSession(tokenStorage, sessionEvents)
         null
     }
+}
+
+private suspend fun clearSession(
+    tokenStorage: TokenStorage,
+    sessionEvents: SessionEvents,
+    storageFailureAlreadyReported: Boolean = false,
+) {
+    val clearResult = runCatchingStorage { tokenStorage.clear() }
+    if (storageFailureAlreadyReported || clearResult is Either.Left) {
+        sessionEvents.emitStorageFailure()
+    }
+    sessionEvents.emitSignedOut()
 }
 
 /**

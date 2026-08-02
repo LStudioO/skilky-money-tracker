@@ -69,16 +69,47 @@ class AuthRepositoryImplTest {
             assertEquals(1, storage.saveCalls)
         }
 
-    private class FailingTokenStorage : TokenStorage {
+    @Test
+    fun `currentSession maps a token storage read failure to Storage`() =
+        runTest {
+            val storage = FailingTokenStorage(failSave = false, failRead = true)
+            val sut = AuthRepositoryImpl(AuthApi(HttpClient(MockEngine { error("unexpected request") })), storage)
+
+            val result = sut.currentSession()
+
+            assertEquals(Either.Left(AppError.Storage), result)
+        }
+
+    @Test
+    fun `logout maps a token storage clear failure to Storage`() =
+        runTest {
+            val storage = FailingTokenStorage(failSave = false, failClear = true)
+            val sut = AuthRepositoryImpl(AuthApi(HttpClient(MockEngine { error("unexpected request") })), storage)
+
+            val result = sut.logout()
+
+            assertEquals(Either.Left(AppError.Storage), result)
+        }
+
+    private class FailingTokenStorage(
+        private val failSave: Boolean = true,
+        private val failRead: Boolean = false,
+        private val failClear: Boolean = false,
+    ) : TokenStorage {
         var saveCalls = 0
 
         override suspend fun save(session: AuthSession) {
             saveCalls += 1
-            error("disk unavailable")
+            if (failSave) error("disk unavailable")
         }
 
-        override suspend fun read(): AuthSession? = null
+        override suspend fun read(): AuthSession? {
+            if (failRead) error("disk unavailable")
+            return null
+        }
 
-        override suspend fun clear() = Unit
+        override suspend fun clear() {
+            if (failClear) error("disk unavailable")
+        }
     }
 }

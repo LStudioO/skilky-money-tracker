@@ -1,6 +1,8 @@
 package com.vstorchevyi.skilky.domain.usecase
 
+import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.AuthSession
+import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.AuthRepository
 
 /**
@@ -10,5 +12,5 @@ import com.vstorchevyi.skilky.domain.repository.AuthRepository
 class GetCurrentSessionUseCase(
     private val authRepository: AuthRepository,
 ) {
-    suspend operator fun invoke(): AuthSession? = authRepository.currentSession()
+    suspend operator fun invoke(): Either<AppError, AuthSession?> = authRepository.currentSession()
 }

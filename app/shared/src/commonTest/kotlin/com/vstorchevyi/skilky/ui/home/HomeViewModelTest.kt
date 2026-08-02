@@ -82,6 +82,31 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun `session read failure emits ShowError`() =
+        runTestWithMain {
+            val auth =
+                FakeAuthRepository().apply {
+                    currentSessionResult = Either.Left(AppError.Storage)
+                }
+
+            val sut = createSut(auth = auth)
+            advanceUntilIdle()
+
+            assertEquals(HomeEvent.ShowError(AppError.Storage), sut.events.first())
+        }
+
+    @Test
+    fun `expense read failure emits ShowError`() =
+        runTestWithMain {
+            val expenses = FakeExpenseRepository().apply { setReadError(AppError.Storage) }
+
+            val sut = createSut(expenses = expenses)
+            advanceUntilIdle()
+
+            assertEquals(HomeEvent.ShowError(AppError.Storage), sut.events.first())
+        }
+
+    @Test
     fun `SignOut clears the session and emits NavigateToLogin`() =
         runTestWithMain {
             // Arrange
@@ -96,6 +121,23 @@ class HomeViewModelTest {
             // Assert
             assertEquals(HomeEvent.NavigateToLogin, sut.events.first())
             assertTrue(auth.calls.any { it is FakeAuthRepository.Call.Logout })
+        }
+
+    @Test
+    fun `SignOut storage failure stays on the screen and emits ShowError`() =
+        runTestWithMain {
+            val auth =
+                FakeAuthRepository().apply {
+                    setSession(FakeAuthRepository.defaultSession())
+                    logoutResult = Either.Left(AppError.Storage)
+                }
+            val sut = createSut(auth = auth)
+            advanceUntilIdle()
+
+            sut.onSignOut()
+            advanceUntilIdle()
+
+            assertEquals(HomeEvent.ShowError(AppError.Storage), sut.events.first())
         }
 
     private fun createSut(

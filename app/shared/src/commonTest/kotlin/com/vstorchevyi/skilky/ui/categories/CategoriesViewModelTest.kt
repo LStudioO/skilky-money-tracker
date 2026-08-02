@@ -68,6 +68,17 @@ class CategoriesViewModelTest {
         }
 
     @Test
+    fun `cache read failure emits a ShowError event`() =
+        runTestWithMain {
+            val repository = FakeCategoryRepository().apply { setReadError(AppError.Storage) }
+
+            val sut = createSut(repository = repository)
+            advanceUntilIdle()
+
+            assertEquals(CategoriesEvent.ShowError(AppError.Storage), sut.events.first())
+        }
+
+    @Test
     fun `onAdd opens an empty draft and onDismissDialog closes it`() =
         runTestWithMain {
             // Arrange

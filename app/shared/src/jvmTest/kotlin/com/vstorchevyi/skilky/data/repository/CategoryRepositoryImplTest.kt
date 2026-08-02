@@ -3,10 +3,13 @@ package com.vstorchevyi.skilky.data.repository
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.vstorchevyi.skilky.api.ApiRoutes
+import com.vstorchevyi.skilky.data.local.CategoryDao
+import com.vstorchevyi.skilky.data.local.CategoryEntity
 import com.vstorchevyi.skilky.data.local.SkilkyDatabase
 import com.vstorchevyi.skilky.data.remote.CategoryApi
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
+import com.vstorchevyi.skilky.domain.model.getOrNull
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -21,7 +24,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -55,6 +60,18 @@ class CategoryRepositoryImplTest {
     }
 
     @Test
+    fun `category cache read failure emits Storage`() =
+        runTest {
+            val sut =
+                createSut(
+                    handler = { respondJson("[]") },
+                    dao = FailingReadCategoryDao(),
+                )
+
+            assertEquals(Either.Left(AppError.Storage), sut.getCategories().first())
+        }
+
+    @Test
     fun `refresh replaces the local cache with the server payload`() =
         runTest {
             // Arrange
@@ -77,7 +94,7 @@ class CategoryRepositoryImplTest {
 
             // Assert
             assertIs<Either.Right<Unit>>(result)
-            val cached = sut.getCategories().first()
+            val cached = requireNotNull(sut.getCategories().first().getOrNull())
             assertEquals(listOf("Food", "Coffee"), cached.map { it.name })
         }
 
@@ -102,7 +119,7 @@ class CategoryRepositoryImplTest {
             // Assert
             assertIs<Either.Right<Any>>(result)
             assertEquals(HttpMethod.Post, recorded.single().method)
-            val cached = sut.getCategories().first()
+            val cached = requireNotNull(sut.getCategories().first().getOrNull())
             assertEquals(42L, cached.single().id)
             assertEquals("Coffee", cached.single().name)
         }
@@ -128,7 +145,7 @@ class CategoryRepositoryImplTest {
             // Assert
             assertEquals(HttpMethod.Put, recorded.single().method)
             assertEquals("${ApiRoutes.Categories.ROOT}/7", recorded.single().url.encodedPath)
-            val cached = sut.getCategories().first().single()
+            val cached = requireNotNull(sut.getCategories().first().getOrNull()).single()
             assertEquals("#5C2C0F", cached.color)
         }
 
@@ -152,7 +169,7 @@ class CategoryRepositoryImplTest {
             sut.delete(1L)
 
             // Assert
-            assertTrue(sut.getCategories().first().isEmpty())
+            assertTrue(requireNotNull(sut.getCategories().first().getOrNull()).isEmpty())
         }
 
     @Test
@@ -174,10 +191,13 @@ class CategoryRepositoryImplTest {
 
             // Assert
             assertEquals(Either.Left(AppError.Conflict), result)
-            assertTrue(sut.getCategories().first().isEmpty())
+            assertTrue(requireNotNull(sut.getCategories().first().getOrNull()).isEmpty())
         }
 
-    private fun createSut(handler: io.ktor.client.engine.mock.MockRequestHandler): CategoryRepositoryImpl {
+    private fun createSut(
+        handler: io.ktor.client.engine.mock.MockRequestHandler,
+        dao: CategoryDao = database.categoryDao(),
+    ): CategoryRepositoryImpl {
         val engine = MockEngine(handler)
         val client =
             HttpClient(engine) {
@@ -196,7 +216,7 @@ class CategoryRepositoryImplTest {
                 }
             }
         return CategoryRepositoryImpl(
-            dao = database.categoryDao(),
+            dao = dao,
             api = CategoryApi(client),
         )
     }
@@ -207,4 +227,14 @@ class CategoryRepositoryImplTest {
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json"),
         )
+
+    private class FailingReadCategoryDao : CategoryDao {
+        override fun getAll(): Flow<List<CategoryEntity>> = flow { error("disk unavailable") }
+
+        override suspend fun upsertAll(categories: List<CategoryEntity>) = Unit
+
+        override suspend fun deleteById(id: Long) = Unit
+
+        override suspend fun clear() = Unit
+    }
 }

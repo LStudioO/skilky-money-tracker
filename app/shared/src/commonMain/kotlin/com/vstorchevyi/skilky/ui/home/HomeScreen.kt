@@ -83,6 +83,10 @@ fun HomeScreen(
                     val noun = if (event.count == 1) "expense" else "expenses"
                     snackbarHostState.showSnackbar("Saved ${event.count} $noun.")
                 }
+
+                is InputEvent.ShowError -> {
+                    snackbarHostState.showSnackbar(event.error.toMessage())
+                }
             }
         }
     }

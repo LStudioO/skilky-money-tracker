@@ -1,6 +1,8 @@
 package com.vstorchevyi.skilky.domain.usecase
 
+import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Category
+import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.CategoryRepository
 import kotlinx.coroutines.flow.Flow
 
@@ -8,5 +10,5 @@ import kotlinx.coroutines.flow.Flow
 class GetCategoriesUseCase(
     private val repository: CategoryRepository,
 ) {
-    operator fun invoke(): Flow<List<Category>> = repository.getCategories()
+    operator fun invoke(): Flow<Either<AppError, List<Category>>> = repository.getCategories()
 }

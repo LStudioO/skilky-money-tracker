@@ -51,4 +51,8 @@ sealed interface InputEvent {
     data class Saved(
         val count: Int,
     ) : InputEvent
+
+    data class ShowError(
+        val error: AppError,
+    ) : InputEvent
 }
