@@ -41,6 +41,7 @@ import com.vstorchevyi.skilky.ui.categories.CategoriesViewModel
 import com.vstorchevyi.skilky.ui.expense.ExpenseFormViewModel
 import com.vstorchevyi.skilky.ui.home.HomeViewModel
 import com.vstorchevyi.skilky.ui.input.InputViewModel
+import kotlinx.datetime.TimeZone
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
@@ -48,6 +49,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import kotlin.time.Clock
 
 /**
  * Koin modules for the KMP client, layered to match the Clean Architecture
@@ -109,6 +111,8 @@ internal val domainModule: Module =
 
 internal val presentationModule: Module =
     module {
+        single<Clock> { Clock.System }
+        single<TimeZone> { TimeZone.currentSystemDefault() }
         viewModelOf(::LoginViewModel)
         viewModelOf(::RegisterViewModel)
         viewModelOf(::HomeViewModel)
