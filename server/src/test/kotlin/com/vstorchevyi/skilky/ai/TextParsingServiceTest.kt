@@ -22,6 +22,9 @@ import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 
 /**
@@ -289,7 +292,7 @@ class TextParsingServiceTest {
     }
 
     @Test
-    fun `parseAudio sends audio bytes to Ollama in the images field as base64`() {
+    fun `parseAudio sends only audio in the user message and keeps currency in the system prompt`() {
         val audio = aWavHeader() + "AUDIOPAYLOAD".toByteArray()
         val capturingEngine =
             capturingMockEngine(
@@ -306,6 +309,10 @@ class TextParsingServiceTest {
         // Just confirming the JSON includes an "images" array; the
         // bytes-equal check is brittle to encoder differences.
         request shouldContain "\"images\""
+
+        val messages = Json.parseToJsonElement(request).jsonObject["messages"]!!.jsonArray
+        messages[0].jsonObject["content"]!!.jsonPrimitive.content shouldContain "UAH"
+        messages[1].jsonObject["content"]!!.jsonPrimitive.content shouldBe ""
     }
 
     // --- parseReceipt ----------------------------------------------------

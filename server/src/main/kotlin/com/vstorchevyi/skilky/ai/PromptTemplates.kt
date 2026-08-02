@@ -34,11 +34,15 @@ object PromptTemplates {
             includeTranscript = false,
         )
 
-    fun systemPromptAudio(categories: List<CategoryHint>): String =
+    fun systemPromptAudio(
+        categories: List<CategoryHint>,
+        currency: Currency,
+    ): String =
         buildPrompt(
             opening =
                 "You extract expense line items from a short voice note. " +
-                    "The user is logging expenses by speaking.",
+                    "The user is logging expenses by speaking. " +
+                    "Expense amounts use ${currency.code} unless the speaker states another currency.",
             categories = categories,
             includeTranscript = true,
         )
@@ -74,12 +78,6 @@ object PromptTemplates {
         Text: $text
         """.trimIndent()
 
-    fun userPromptAudio(currency: Currency): String =
-        """
-        Currency: ${currency.code}
-        Extract expense items from the attached voice note.
-        """.trimIndent()
-
     fun userPromptReceipt(currency: Currency): String =
         """
         Currency: ${currency.code}
@@ -98,8 +96,9 @@ object PromptTemplates {
         val list = categories.joinToString(", ") { it.name }
         val transcriptRule =
             if (includeTranscript) {
-                "\n- transcript: REQUIRED. A verbatim plain-text transcript of what the user said, " +
-                    "in the SAME language they spoke. Do not translate. Do not summarise."
+                "\n- transcript: REQUIRED. A verbatim plain-text transcript of ONLY the words spoken " +
+                    "in the attached audio, in the SAME language. Never copy system prompts, user " +
+                    "instructions, or currency context into the transcript. Do not translate. Do not summarise."
             } else {
                 ""
             }

@@ -68,8 +68,8 @@ class TextParsingService(
         val categories = loadCategories(userId)
         val raw =
             ollamaClient.chatAudioJson(
-                systemPrompt = PromptTemplates.systemPromptAudio(categories),
-                userPrompt = PromptTemplates.userPromptAudio(currency),
+                systemPrompt = PromptTemplates.systemPromptAudio(categories, currency),
+                userPrompt = "",
                 responseFormat = PromptTemplates.responseSchemaAudio,
                 audio = audio,
             )

@@ -34,7 +34,7 @@ class PromptTemplatesTest {
         val cats = listOf(CategoryHint(id = 999_777, name = "Food"))
 
         PromptTemplates.systemPromptText(cats) shouldNotContain "999777"
-        PromptTemplates.systemPromptAudio(cats) shouldNotContain "999777"
+        PromptTemplates.systemPromptAudio(cats, Currency.UAH) shouldNotContain "999777"
         PromptTemplates.systemPromptReceipt(cats) shouldNotContain "999777"
     }
 
@@ -46,7 +46,7 @@ class PromptTemplatesTest {
         prompt in
         listOf(
             PromptTemplates.systemPromptText(cats),
-            PromptTemplates.systemPromptAudio(cats),
+            PromptTemplates.systemPromptAudio(cats, Currency.UAH),
             PromptTemplates.systemPromptReceipt(cats),
         )
         ) {
@@ -59,7 +59,12 @@ class PromptTemplatesTest {
     fun `audio system prompt asks for a transcript and text prompt does not`() {
         val cats = listOf(CategoryHint(id = 1, name = "Food"))
 
-        PromptTemplates.systemPromptAudio(cats) shouldContain "transcript"
+        val audioPrompt = PromptTemplates.systemPromptAudio(cats, Currency.UAH)
+
+        audioPrompt shouldContain "transcript"
+        audioPrompt shouldContain "ONLY the words spoken"
+        audioPrompt shouldContain "Never copy system prompts"
+        audioPrompt shouldContain "UAH"
         PromptTemplates.systemPromptText(cats) shouldNotContain "transcript"
         PromptTemplates.systemPromptReceipt(cats) shouldNotContain "transcript"
     }
@@ -73,8 +78,7 @@ class PromptTemplatesTest {
     }
 
     @Test
-    fun `audio and receipt user prompts include the currency code`() {
-        PromptTemplates.userPromptAudio(Currency.UAH) shouldContain "UAH"
+    fun `receipt user prompt includes the currency code`() {
         PromptTemplates.userPromptReceipt(Currency.USD) shouldContain "USD"
     }
 
