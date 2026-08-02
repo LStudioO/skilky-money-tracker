@@ -1,7 +1,7 @@
 package com.vstorchevyi.skilky.domain.usecase
 
 import com.vstorchevyi.skilky.api.Currency
-import com.vstorchevyi.skilky.api.ParsedExpenseItem
+import com.vstorchevyi.skilky.api.ParseTextResponse
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.repository.ParseRepository
@@ -13,5 +13,5 @@ class ParseAudioUseCase(
     suspend operator fun invoke(
         bytes: ByteArray,
         currency: Currency,
-    ): Either<AppError, List<ParsedExpenseItem>> = repository.parseAudio(bytes, currency)
+    ): Either<AppError, ParseTextResponse> = repository.parseAudio(bytes, currency)
 }

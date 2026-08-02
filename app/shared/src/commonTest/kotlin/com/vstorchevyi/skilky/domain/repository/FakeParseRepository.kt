@@ -1,6 +1,7 @@
 package com.vstorchevyi.skilky.domain.repository
 
 import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.ParseTextResponse
 import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
@@ -10,7 +11,7 @@ class FakeParseRepository : ParseRepository {
     val audioCalls: MutableList<AudioCall> = mutableListOf()
     val receiptCalls: MutableList<ReceiptCall> = mutableListOf()
     var result: Either<AppError, List<ParsedExpenseItem>> = Either.Right(emptyList())
-    var audioResult: Either<AppError, List<ParsedExpenseItem>> = Either.Right(emptyList())
+    var audioResult: Either<AppError, ParseTextResponse> = Either.Right(ParseTextResponse(emptyList()))
     var receiptResult: Either<AppError, List<ParsedExpenseItem>> = Either.Right(emptyList())
 
     override suspend fun parseText(
@@ -24,7 +25,7 @@ class FakeParseRepository : ParseRepository {
     override suspend fun parseAudio(
         bytes: ByteArray,
         currency: Currency,
-    ): Either<AppError, List<ParsedExpenseItem>> {
+    ): Either<AppError, ParseTextResponse> {
         audioCalls += AudioCall(bytes, currency)
         return audioResult
     }

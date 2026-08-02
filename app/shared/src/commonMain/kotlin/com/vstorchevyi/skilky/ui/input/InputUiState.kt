@@ -44,6 +44,10 @@ data class ParseItemDraft(
 sealed interface InputError {
     data object NoItems : InputError
 
+    data class NoAudioItems(
+        val transcript: String,
+    ) : InputError
+
     data object UnsupportedAudio : InputError
 
     data object AudioTooLarge : InputError

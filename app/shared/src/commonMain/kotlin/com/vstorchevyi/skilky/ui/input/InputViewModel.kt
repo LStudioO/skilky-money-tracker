@@ -171,7 +171,14 @@ class InputViewModel(
                         }
 
                         is Either.Right -> {
-                            showParsedItems(result.value, InputType.AUDIO)
+                            val response = result.value
+                            val emptyItemsError =
+                                response.transcript
+                                    ?.trim()
+                                    ?.takeIf(String::isNotEmpty)
+                                    ?.let(InputError::NoAudioItems)
+                                    ?: InputError.NoItems
+                            showParsedItems(response.items, InputType.AUDIO, emptyItemsError)
                         }
                     }
                 }
@@ -182,9 +189,10 @@ class InputViewModel(
     private fun showParsedItems(
         items: List<ParsedExpenseItem>,
         inputType: InputType,
+        emptyItemsError: InputError = InputError.NoItems,
     ) {
         if (items.isEmpty()) {
-            _state.update { it.copy(isParsing = false, parseError = InputError.NoItems) }
+            _state.update { it.copy(isParsing = false, parseError = emptyItemsError) }
             return
         }
         val categories = _state.value.categories

@@ -366,6 +366,7 @@ private fun PreviewActions(
 private fun InputError.toMessage(): String =
     when (this) {
         InputError.NoItems -> "No expenses found. Try rephrasing."
+        is InputError.NoAudioItems -> "No expenses found. Heard: \"${transcript.trim()}\". Try rephrasing."
         InputError.UnsupportedAudio -> "Record a WAV voice note and try again."
         InputError.AudioTooLarge -> "Voice notes must be 10 MB or smaller."
         InputError.UnsupportedImage -> "Choose a JPEG or PNG receipt image."

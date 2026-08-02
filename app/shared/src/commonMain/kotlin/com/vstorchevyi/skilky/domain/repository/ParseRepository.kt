@@ -1,6 +1,7 @@
 package com.vstorchevyi.skilky.domain.repository
 
 import com.vstorchevyi.skilky.api.Currency
+import com.vstorchevyi.skilky.api.ParseTextResponse
 import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
@@ -15,7 +16,7 @@ interface ParseRepository {
     suspend fun parseAudio(
         bytes: ByteArray,
         currency: Currency,
-    ): Either<AppError, List<ParsedExpenseItem>>
+    ): Either<AppError, ParseTextResponse>
 
     suspend fun parseReceipt(
         bytes: ByteArray,

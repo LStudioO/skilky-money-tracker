@@ -2,6 +2,7 @@ package com.vstorchevyi.skilky.ui.input
 
 import com.vstorchevyi.skilky.api.Currency
 import com.vstorchevyi.skilky.api.InputType
+import com.vstorchevyi.skilky.api.ParseTextResponse
 import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Category
@@ -190,7 +191,13 @@ class InputViewModelTest {
             // Arrange
             val parser =
                 FakeParseRepository().apply {
-                    audioResult = Either.Right(listOf(parsed("Taxi", 120.0, categoryId = 8)))
+                    audioResult =
+                        Either.Right(
+                            ParseTextResponse(
+                                items = listOf(parsed("Taxi", 120.0, categoryId = 8)),
+                                transcript = "taxi 120",
+                            ),
+                        )
                 }
             val categories = FakeCategoryRepository(initial = listOf(category(8, "Transport")))
             val sut = createSut(parser = parser, categories = categories)
@@ -210,12 +217,38 @@ class InputViewModelTest {
         }
 
     @Test
+    fun `empty audio parse exposes the transcript`() =
+        runTestWithMain {
+            // Arrange
+            val parser =
+                FakeParseRepository().apply {
+                    audioResult = Either.Right(ParseTextResponse(items = emptyList(), transcript = "coffee forty"))
+                }
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onAudioRecorded(wavBytes())
+            advanceUntilIdle()
+
+            // Assert
+            assertEquals(InputError.NoAudioItems("coffee forty"), sut.state.value.parseError)
+            assertNull(sut.state.value.previewItems)
+        }
+
+    @Test
     fun `audio preview saves audio expenses`() =
         runTestWithMain {
             // Arrange
             val parser =
                 FakeParseRepository().apply {
-                    audioResult = Either.Right(listOf(parsed("Taxi", 120.0, categoryId = 8)))
+                    audioResult =
+                        Either.Right(
+                            ParseTextResponse(
+                                items = listOf(parsed("Taxi", 120.0, categoryId = 8)),
+                                transcript = "taxi 120",
+                            ),
+                        )
                 }
             val categories = FakeCategoryRepository(initial = listOf(category(8, "Transport")))
             val expenses =
