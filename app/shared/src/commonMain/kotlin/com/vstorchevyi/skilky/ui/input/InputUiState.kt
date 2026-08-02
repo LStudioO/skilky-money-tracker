@@ -44,6 +44,10 @@ data class ParseItemDraft(
 sealed interface InputError {
     data object NoItems : InputError
 
+    data object UnsupportedAudio : InputError
+
+    data object AudioTooLarge : InputError
+
     data object UnsupportedImage : InputError
 
     data object ImageTooLarge : InputError

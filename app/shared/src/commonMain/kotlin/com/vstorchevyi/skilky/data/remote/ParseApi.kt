@@ -23,6 +23,30 @@ internal class ParseApi(
             .post(ApiRoutes.Parse.TEXT) { setBody(request) }
             .body()
 
+    suspend fun parseAudio(
+        bytes: ByteArray,
+        currency: Currency,
+    ): ParseTextResponse =
+        httpClient
+            .post(ApiRoutes.Parse.AUDIO) {
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            append("currency", currency.code)
+                            append(
+                                "file",
+                                bytes,
+                                Headers.build {
+                                    append(HttpHeaders.ContentType, AUDIO_WAV_CONTENT_TYPE)
+                                    append(HttpHeaders.ContentDisposition, "filename=\"audio.wav\"")
+                                },
+                            )
+                        },
+                    ),
+                )
+            }
+            .body()
+
     suspend fun parseReceipt(
         bytes: ByteArray,
         currency: Currency,
@@ -56,6 +80,7 @@ internal class ParseApi(
         size >= PNG_SIGNATURE.size && PNG_SIGNATURE.indices.all { index -> this[index] == PNG_SIGNATURE[index] }
 
     private companion object {
+        const val AUDIO_WAV_CONTENT_TYPE = "audio/wav"
         val PNG_SIGNATURE = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
     }
 }

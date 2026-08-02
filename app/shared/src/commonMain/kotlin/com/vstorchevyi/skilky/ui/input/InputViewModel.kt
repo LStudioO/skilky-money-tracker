@@ -10,6 +10,7 @@ import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.ExpenseInput
 import com.vstorchevyi.skilky.domain.usecase.CreateExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.ParseAudioUseCase
 import com.vstorchevyi.skilky.domain.usecase.ParseReceiptUseCase
 import com.vstorchevyi.skilky.domain.usecase.ParseTextUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
@@ -30,6 +31,7 @@ import kotlin.time.Clock
 
 class InputViewModel(
     private val parseText: ParseTextUseCase,
+    private val parseAudio: ParseAudioUseCase,
     private val parseReceipt: ParseReceiptUseCase,
     private val getCategories: GetCategoriesUseCase,
     private val refreshCategories: RefreshCategoriesUseCase,
@@ -139,6 +141,44 @@ class InputViewModel(
         }
     }
 
+    fun onAudioRecorded(bytes: ByteArray?) {
+        val snapshot = _state.value
+        when {
+            snapshot.isParsing -> {
+                Unit
+            }
+
+            bytes == null -> {
+                _state.update { it.copy(parseError = InputError.UnsupportedAudio) }
+            }
+
+            bytes.size > MAX_AUDIO_BYTES -> {
+                _state.update { it.copy(parseError = InputError.AudioTooLarge) }
+            }
+
+            !bytes.isWav() -> {
+                _state.update { it.copy(parseError = InputError.UnsupportedAudio) }
+            }
+
+            else -> {
+                _state.update { it.copy(isParsing = true, parseError = null) }
+                viewModelScope.launch {
+                    when (val result = parseAudio(bytes, Currency.UAH)) {
+                        is Either.Left -> {
+                            _state.update {
+                                it.copy(isParsing = false, parseError = InputError.Request(result.value))
+                            }
+                        }
+
+                        is Either.Right -> {
+                            showParsedItems(result.value, InputType.AUDIO)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private fun showParsedItems(
         items: List<ParsedExpenseItem>,
         inputType: InputType,
@@ -148,7 +188,7 @@ class InputViewModel(
             return
         }
         val categories = _state.value.categories
-        val date = today()
+        val date = today(clock, timeZone)
         _state.update {
             it.copy(
                 isParsing = false,
@@ -172,7 +212,7 @@ class InputViewModel(
     }
 
     fun onAddItem() {
-        val item = ParseItemDraft(id = nextItemId++, date = today(), isEditing = true)
+        val item = ParseItemDraft(id = nextItemId++, date = today(clock, timeZone), isEditing = true)
         _state.update { state ->
             state.copy(
                 previewItems = state.previewItems.orEmpty().map { it.copy(isEditing = false) } + item,
@@ -294,17 +334,30 @@ class InputViewModel(
             date = date,
             inputType = inputType,
         )
-
-    private fun today(): LocalDate = clock.now().toLocalDateTime(timeZone).date
 }
 
+private fun today(
+    clock: Clock,
+    timeZone: TimeZone,
+): LocalDate = clock.now().toLocalDateTime(timeZone).date
+
 private fun ByteArray.isJpegOrPng(): Boolean = startsWith(JPEG_MAGIC) || startsWith(PNG_MAGIC)
+
+private fun ByteArray.isWav(): Boolean =
+    size >= WAV_HEADER_MIN_BYTES &&
+        startsWith(RIFF_MAGIC) &&
+        copyOfRange(WAVE_OFFSET, WAVE_OFFSET + WAVE_MAGIC.size).contentEquals(WAVE_MAGIC)
 
 private fun ByteArray.startsWith(prefix: ByteArray): Boolean =
     size >= prefix.size && prefix.indices.all { index -> this[index] == prefix[index] }
 
+private val RIFF_MAGIC = byteArrayOf(0x52, 0x49, 0x46, 0x46)
+private val WAVE_MAGIC = byteArrayOf(0x57, 0x41, 0x56, 0x45)
 private val JPEG_MAGIC = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
 private val PNG_MAGIC = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+private const val WAVE_OFFSET = 8
+private const val WAV_HEADER_MIN_BYTES = 12
+private const val MAX_AUDIO_BYTES = 10 * 1024 * 1024
 private const val MAX_RECEIPT_BYTES = 10 * 1024 * 1024
 
 private fun ParseItemDraft.resolveCategory(categories: List<Category>): ParseItemDraft {

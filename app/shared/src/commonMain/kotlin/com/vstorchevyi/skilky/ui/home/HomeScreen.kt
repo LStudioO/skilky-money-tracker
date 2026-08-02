@@ -44,6 +44,7 @@ import com.vstorchevyi.skilky.ui.input.InputUiState
 import com.vstorchevyi.skilky.ui.input.InputViewModel
 import com.vstorchevyi.skilky.ui.input.ParsePreviewSheet
 import com.vstorchevyi.skilky.ui.input.QuickEntryBar
+import com.vstorchevyi.skilky.ui.input.rememberAudioRecorderLauncher
 import com.vstorchevyi.skilky.ui.input.rememberReceiptCameraLauncher
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitType
@@ -75,6 +76,7 @@ fun HomeScreen(
     val inputState by inputViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val receiptLaunchers = rememberReceiptLaunchers(inputViewModel)
+    val audioRecorder = rememberAudioRecorderLauncher(onResult = inputViewModel::onAudioRecorded)
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -112,6 +114,10 @@ fun HomeScreen(
             InputActions(
                 onQueryChange = inputViewModel::onQueryChange,
                 onSubmit = inputViewModel::onSubmit,
+                onStartAudioRecording = audioRecorder?.start ?: {},
+                onStopAudioRecording = audioRecorder?.stop ?: {},
+                canRecordAudio = audioRecorder != null,
+                isAudioRecording = audioRecorder?.isRecording == true,
                 onPickReceipt = receiptLaunchers.pick,
                 onCaptureReceipt = receiptLaunchers.capture ?: {},
                 canCaptureReceipt = receiptLaunchers.capture != null,

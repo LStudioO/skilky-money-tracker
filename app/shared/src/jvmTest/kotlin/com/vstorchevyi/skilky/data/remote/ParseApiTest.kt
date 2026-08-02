@@ -22,6 +22,52 @@ import kotlin.test.assertTrue
 
 class ParseApiTest {
     @Test
+    fun `audio parse uploads wav as multipart form data`() =
+        runTest {
+            // Arrange
+            val audio = wavBytes()
+            var requestMethod: HttpMethod? = null
+            var requestPath = ""
+            var requestContentType = ""
+            var requestBody = byteArrayOf()
+            val engine =
+                MockEngine { request ->
+                    requestMethod = request.method
+                    requestPath = request.url.encodedPath
+                    requestContentType = requireNotNull(request.body.contentType).toString()
+                    requestBody = request.body.toByteArray()
+                    respond(
+                        content =
+                            """
+                            {
+                              "items": [{"name": "Taxi", "amount": 120.0, "currency": "UAH"}],
+                              "transcript": "taxi 120"
+                            }
+                            """.trimIndent(),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                }
+            val client = testClient(engine)
+
+            // Act
+            val result = ParseApi(client).parseAudio(audio, Currency.UAH)
+
+            // Assert
+            val bodyText = requestBody.toString(Charsets.ISO_8859_1)
+            assertEquals(HttpMethod.Post, requestMethod)
+            assertEquals(ApiRoutes.Parse.AUDIO, requestPath)
+            assertTrue(requestContentType.startsWith("multipart/form-data"))
+            assertTrue(bodyText.contains("name=currency"))
+            assertTrue(bodyText.contains("UAH"))
+            assertTrue(bodyText.contains("filename=\"audio.wav\""))
+            assertTrue(bodyText.contains("Content-Type: audio/wav"))
+            assertTrue(requestBody.containsSequence(audio))
+            assertEquals("Taxi", result.items.single().name)
+            assertEquals("taxi 120", result.transcript)
+        }
+
+    @Test
     fun `receipt parse uploads png as multipart form data`() =
         runTest {
             // Arrange
@@ -48,13 +94,7 @@ class ParseApiTest {
                         headers = headersOf(HttpHeaders.ContentType, "application/json"),
                     )
                 }
-            val client =
-                HttpClient(engine) {
-                    install(ContentNegotiation) {
-                        json(Json { ignoreUnknownKeys = true })
-                    }
-                    defaultRequest { url("http://localhost") }
-                }
+            val client = testClient(engine)
 
             // Act
             val result = ParseApi(client).parseReceipt(image, Currency.UAH)
@@ -74,6 +114,33 @@ class ParseApiTest {
         }
 
     private fun pngBytes(): ByteArray = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3)
+
+    private fun wavBytes(): ByteArray =
+        byteArrayOf(
+            0x52,
+            0x49,
+            0x46,
+            0x46,
+            0,
+            0,
+            0,
+            0,
+            0x57,
+            0x41,
+            0x56,
+            0x45,
+            1,
+            2,
+            3,
+        )
+
+    private fun testClient(engine: MockEngine): HttpClient =
+        HttpClient(engine) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+            defaultRequest { url("http://localhost") }
+        }
 
     private fun ByteArray.containsSequence(sequence: ByteArray): Boolean =
         indices.any { start ->
