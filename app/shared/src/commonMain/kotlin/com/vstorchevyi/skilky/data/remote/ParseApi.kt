@@ -32,6 +32,7 @@ internal class ParseApi(
             .post(ApiRoutes.Parse.AUDIO) {
                 timeout {
                     requestTimeoutMillis = AUDIO_REQUEST_TIMEOUT_MILLIS
+                    socketTimeoutMillis = AUDIO_REQUEST_TIMEOUT_MILLIS
                 }
                 setBody(
                     MultiPartFormDataContent(
