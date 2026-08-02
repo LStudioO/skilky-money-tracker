@@ -9,6 +9,8 @@ import com.vstorchevyi.skilky.data.remote.AuthApi
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.AuthSession
 import com.vstorchevyi.skilky.domain.model.Either
+import com.vstorchevyi.skilky.domain.model.flatMap
+import com.vstorchevyi.skilky.domain.model.map
 import com.vstorchevyi.skilky.domain.repository.AuthRepository
 
 /**
@@ -37,9 +39,9 @@ internal class AuthRepositoryImpl(
     }
 
     private suspend fun authenticate(call: suspend () -> AuthResponse): Either<AppError, AuthSession> =
-        runCatchingApi {
-            val session = call().toDomain()
-            tokenStorage.save(session)
-            session
-        }
+        runCatchingApi { call().toDomain() }
+            .flatMap { session ->
+                runCatchingStorage { tokenStorage.save(session) }
+                    .map { session }
+            }
 }

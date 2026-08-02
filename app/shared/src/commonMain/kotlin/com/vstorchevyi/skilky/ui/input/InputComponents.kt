@@ -288,5 +288,6 @@ private fun AppError.toMessage(): String =
         AppError.Validation -> "Couldn't parse that. Try rephrasing."
         AppError.Conflict -> "Conflict. Try again."
         AppError.Network -> "Network problem. Check your connection."
+        AppError.Storage -> "The server may have saved these items. Restart the app before retrying."
         AppError.Unknown -> "Couldn't parse that. Try again."
     }

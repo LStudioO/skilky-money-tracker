@@ -2,6 +2,7 @@ package com.vstorchevyi.skilky.data.local
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -21,4 +22,10 @@ internal interface ExpenseDao {
 
     @Query("DELETE FROM expenses")
     suspend fun clear()
+
+    @Transaction
+    suspend fun replaceAll(items: List<ExpenseEntity>) {
+        clear()
+        upsertAll(items)
+    }
 }

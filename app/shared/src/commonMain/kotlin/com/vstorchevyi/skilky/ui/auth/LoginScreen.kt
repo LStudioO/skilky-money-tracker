@@ -126,6 +126,7 @@ private fun LoginErrorText(error: AppError) {
             AppError.Validation -> "Check your email and password format."
             AppError.Conflict -> "Account state conflict. Try again."
             AppError.Network -> "Network problem. Check your connection."
+            AppError.Storage -> "Couldn't save your session on this device."
             AppError.Unknown -> "Something went wrong. Please try again."
         }
     Text(

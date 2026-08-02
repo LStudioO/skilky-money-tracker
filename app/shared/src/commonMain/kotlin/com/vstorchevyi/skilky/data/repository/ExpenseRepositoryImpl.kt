@@ -12,6 +12,7 @@ import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.model.ExpenseInput
+import com.vstorchevyi.skilky.domain.model.flatMap
 import com.vstorchevyi.skilky.domain.model.map
 import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
 import kotlinx.coroutines.flow.Flow
@@ -47,10 +48,9 @@ internal class ExpenseRepositoryImpl(
     override suspend fun refresh(): Either<AppError, Unit> =
         runCatchingApi {
             val response = api.list()
-            val entities = response.items.map { it.toEntity() }
-            dao.clear()
-            dao.upsertAll(entities)
-            Unit
+            response.items.map { it.toEntity() }
+        }.flatMap { entities ->
+            runCatchingStorage { dao.replaceAll(entities) }
         }
 
     override suspend fun create(input: ExpenseInput): Either<AppError, Expense> {
@@ -63,9 +63,10 @@ internal class ExpenseRepositoryImpl(
         return runCatchingApi {
             val response = api.createBatch(ExpenseBatchRequest(items = inputs.map { it.toRequest() }))
             check(response.items.size == inputs.size) { "Expense batch response size does not match request" }
-            val entities = response.items.map { it.toEntity() }
-            dao.upsertAll(entities)
-            entities.map { it.toDomain() }
+            response.items.map { it.toEntity() }
+        }.flatMap { entities ->
+            runCatchingStorage { dao.upsertAll(entities) }
+                .map { entities.map { it.toDomain() } }
         }
     }
 
@@ -74,17 +75,17 @@ internal class ExpenseRepositoryImpl(
         input: ExpenseInput,
     ): Either<AppError, Expense> =
         runCatchingApi {
-            val updated = api.update(id, input.toRequest())
-            dao.upsertAll(listOf(updated.toEntity()))
-            updated.toEntity().toDomain()
+            api.update(id, input.toRequest()).toEntity()
+        }.flatMap { entity ->
+            runCatchingStorage { dao.upsertAll(listOf(entity)) }
+                .map { entity.toDomain() }
         }
 
     override suspend fun delete(id: Long): Either<AppError, Unit> =
-        runCatchingApi {
-            api.delete(id)
-            dao.deleteById(id)
-            Unit
-        }
+        runCatchingApi { api.delete(id) }
+            .flatMap {
+                runCatchingStorage { dao.deleteById(id) }
+            }
 
     private fun ExpenseInput.toRequest(): ExpenseRequest =
         ExpenseRequest(

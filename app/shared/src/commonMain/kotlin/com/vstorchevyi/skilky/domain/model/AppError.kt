@@ -2,8 +2,8 @@ package com.vstorchevyi.skilky.domain.model
 
 /**
  * Why a domain operation failed, independent of the transport. The data layer
- * turns HTTP status codes and connection failures into one of these, so the
- * domain and presentation layers never see Ktor or status codes.
+ * turns transport and local persistence failures into one of these, so the
+ * domain and presentation layers never see Ktor, Room, or DataStore errors.
  *
  * Used as the [Either.Left] type of a failed operation.
  */
@@ -19,6 +19,9 @@ enum class AppError {
 
     /** The server could not be reached, or it returned a server error. */
     Network,
+
+    /** Local persisted state could not be read or written. */
+    Storage,
 
     /** Anything not covered above. */
     Unknown,
