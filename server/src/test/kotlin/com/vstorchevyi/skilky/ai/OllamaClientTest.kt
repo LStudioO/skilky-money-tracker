@@ -12,12 +12,14 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.io.IOException
@@ -41,6 +43,29 @@ class OllamaClientTest {
 
             // Assert
             result.containsKey("items") shouldBe true
+        }
+    }
+
+    @Test
+    fun `chatJson disables model thinking`() {
+        runBlocking {
+            // Arrange
+            var requestBody = ""
+            val engine =
+                MockEngine { request ->
+                    requestBody = (request.body as TextContent).text
+                    respond(
+                        content = chatResponse(content = """{"items":[]}"""),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val sut = createSut(engine)
+
+            // Act
+            sut.chatJson("system", "user", emptyFormat())
+
+            // Assert
+            Json.parseToJsonElement(requestBody).jsonObject["think"].toString() shouldBe "false"
         }
     }
 

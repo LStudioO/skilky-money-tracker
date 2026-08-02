@@ -153,6 +153,7 @@ class OllamaClient(
                             ),
                         format = responseFormat,
                         stream = false,
+                        think = false,
                         options = GEMMA4_SAMPLING,
                         keepAlive = config.keepAlive,
                     ),

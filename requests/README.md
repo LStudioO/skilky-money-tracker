@@ -27,7 +27,13 @@ server process is listening.
    ```bash
    docker compose -f docker/docker-compose.yml up -d postgres
    ```
-2. **Ktor server** (port **8080**, overridable with env `PORT`):
+2. **Ollama** (required by `parse.http`):
+   ```bash
+   ollama serve
+   ```
+   On macOS, use the native Ollama app so receipt and audio parsing run through Metal. Docker
+   Desktop for macOS does not expose the Apple GPU to the Ollama container.
+3. **Ktor server** (port **8080**, overridable with env `PORT`):
    ```bash
    ./gradlew :server:run
    ```
