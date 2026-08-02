@@ -33,9 +33,9 @@ fmt:
 check:
     ./gradlew spotlessApply detekt :server:test
 
-# GET /health from the running server.
+# GET /api/v1/health from the running server.
 health:
-    curl -s http://localhost:8080/health
+    curl -s http://localhost:8080/api/v1/health
 
 # Pull (or re-pull) a chat model. Defaults to gemma4:e4b.
 pull-model model='gemma4:e4b':

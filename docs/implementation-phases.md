@@ -19,7 +19,7 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
   - Applied to all modules via convention plugins
 - Create `:shared:models` with `Currency` enum + `ApiRoutes` object
 - Create `:shared:core` with `DateUtils` placeholder
-- Create `:server` with minimal Ktor application (`GET /health` → `{"status": "ok"}`)
+- Create `:server` with minimal Ktor application (`GET /api/v1/health` → `{"status": "ok"}`)
 - Create `docker/docker-compose.yml` with just postgres + backend services
 - Set up `.github/workflows/build.yml` with lint + build jobs
 
@@ -29,7 +29,7 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 - `./gradlew detekt` passes with no issues
 - `./gradlew spotlessCheck` passes (formatting correct)
 - `./gradlew :server:run` starts Ktor on port 8080
-- `curl localhost:8080/health` returns `{"status": "ok"}`
+- `curl localhost:8080/api/v1/health` returns `{"status": "ok"}`
 - `./gradlew :composeApp:assembleDebug` produces installable APK
 - Android app launches and shows a placeholder screen
 - GitHub Actions lint + build workflow passes

@@ -9,7 +9,7 @@ Skilky is a budget tracker for people who will not open a spreadsheet. You log s
 
 ## Quickstart
 
-Goal: `curl localhost:8080/health` returns `{"status":"ok"}` on a fresh clone.
+Goal: `curl localhost:8080/api/v1/health` returns `{"status":"ok","version":"1.0.0"}` on a fresh clone.
 
 Prereqs: JDK 21, Docker, ~10 GB free disk for the model and the DB.
 
@@ -34,8 +34,8 @@ Then run the server:
 And the smoke test, in another terminal:
 
 ```bash
-curl localhost:8080/health
-# {"status":"ok"}
+curl localhost:8080/api/v1/health
+# {"status":"ok","version":"1.0.0"}
 ```
 
 `application.conf` ships dev defaults that match the docker-compose values, so no env vars are needed locally. For production, set `JWT_SECRET`, `REFRESH_TOKEN_PEPPER`, and `POSTGRES_PASSWORD` at minimum. Full env reference: [`docs/deployment.md`](docs/deployment.md).
