@@ -6,6 +6,7 @@ import com.vstorchevyi.skilky.api.ParseTextRequest
 import com.vstorchevyi.skilky.api.ParseTextResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.post
@@ -29,6 +30,9 @@ internal class ParseApi(
     ): ParseTextResponse =
         httpClient
             .post(ApiRoutes.Parse.AUDIO) {
+                timeout {
+                    requestTimeoutMillis = AUDIO_REQUEST_TIMEOUT_MILLIS
+                }
                 setBody(
                     MultiPartFormDataContent(
                         formData {
@@ -80,6 +84,7 @@ internal class ParseApi(
         size >= PNG_SIGNATURE.size && PNG_SIGNATURE.indices.all { index -> this[index] == PNG_SIGNATURE[index] }
 
     private companion object {
+        const val AUDIO_REQUEST_TIMEOUT_MILLIS = 180_000L
         const val AUDIO_WAV_CONTENT_TYPE = "audio/wav"
         val PNG_SIGNATURE = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
     }

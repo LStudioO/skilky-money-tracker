@@ -29,6 +29,7 @@ internal fun main() {
                 baseUrl = baseUrl,
                 model = model,
                 timeoutSeconds = EVAL_TIMEOUT_SECONDS,
+                audioTimeoutSeconds = EVAL_TIMEOUT_SECONDS,
                 keepAlive = "30m",
             ),
         )

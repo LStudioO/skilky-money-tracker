@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory
  * receipt photo). Each method:
  * 1. Loads the user's visible categories (defaults plus any they made).
  * 2. Builds the right prompt and response schema from [PromptTemplates].
- * 3. Calls [OllamaClient.chatJson], attaching the modality's binary
- *    bytes to [OllamaClient.chatJson]'s `inputs` for audio and receipts.
+ * 3. Calls [OllamaClient], attaching the modality's binary bytes for
+ *    audio and receipts.
  * 4. Maps the JSON to [ParsedExpenseItem]s, resolving
  *    [ParsedExpenseItem.suggestedCategoryName] back to a real
  *    [ParsedExpenseItem.suggestedCategoryId] via case-insensitive name
@@ -67,11 +67,11 @@ class TextParsingService(
         val startNanos = System.nanoTime()
         val categories = loadCategories(userId)
         val raw =
-            ollamaClient.chatJson(
+            ollamaClient.chatAudioJson(
                 systemPrompt = PromptTemplates.systemPromptAudio(categories),
                 userPrompt = PromptTemplates.userPromptAudio(currency),
                 responseFormat = PromptTemplates.responseSchemaAudio,
-                inputs = listOf(audio),
+                audio = audio,
             )
         val response = raw.decodeResponse(currency, categories, includeTranscript = true)
         logParseComplete(modality = "audio", startNanos = startNanos, response = response)
