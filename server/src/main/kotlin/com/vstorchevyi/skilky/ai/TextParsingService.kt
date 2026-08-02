@@ -65,6 +65,15 @@ class TextParsingService(
         userId: Long,
     ): ParseTextResponse {
         val startNanos = System.nanoTime()
+        val diagnostics = audio.wavAudioDiagnostics()
+        log.debug(
+            if (diagnostics == null) {
+                "parse.audio_input bytes=${audio.size} signal=unavailable"
+            } else {
+                "parse.audio_input bytes=${audio.size} duration_ms=${diagnostics.durationMs} " +
+                    "peak=${diagnostics.peak} rms=${diagnostics.rms}"
+            },
+        )
         val categories = loadCategories(userId)
         val raw =
             ollamaClient.chatAudioJson(
@@ -74,6 +83,10 @@ class TextParsingService(
                 audio = audio,
             )
         val audioResponse = raw.decodeResponse(currency, categories, includeTranscript = true)
+        log.debug(
+            "parse.audio_model transcript=\"${audioResponse.transcript.orEmpty().forAudioLog()}\" " +
+                "items=${audioResponse.items.size}",
+        )
         val response = retryTranscriptWhenAudioItemsAreEmpty(audioResponse, currency, categories)
         logParseComplete(modality = "audio", startNanos = startNanos, response = response)
         return response
