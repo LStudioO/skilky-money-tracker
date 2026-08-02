@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -188,7 +189,11 @@ internal fun ParsePreviewSheet(
     actions: InputActions,
 ) {
     val items = state.previewItems ?: return
-    ModalBottomSheet(onDismissRequest = actions.onDismissPreview) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = actions.onDismissPreview,
+        sheetState = sheetState,
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
         ) {
