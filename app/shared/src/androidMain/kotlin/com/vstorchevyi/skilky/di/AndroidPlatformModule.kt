@@ -6,7 +6,10 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.vstorchevyi.skilky.data.local.MIGRATION_1_2
 import com.vstorchevyi.skilky.data.local.SkilkyDatabase
+import com.vstorchevyi.skilky.data.sync.AndroidNetworkMonitor
+import com.vstorchevyi.skilky.data.sync.NetworkMonitor
 import okio.Path.Companion.toPath
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -37,10 +40,13 @@ fun androidPlatformModule(context: Context): Module =
                 name = context.getDatabasePath(DATABASE_FILE).absolutePath,
             )
                 .setDriver(BundledSQLiteDriver())
+                .addMigrations(MIGRATION_1_2)
                 .build()
         }
         single { get<SkilkyDatabase>().categoryDao() }
         single { get<SkilkyDatabase>().expenseDao() }
+        single { get<SkilkyDatabase>().syncQueueDao() }
+        single<NetworkMonitor> { AndroidNetworkMonitor(context) }
     }
 
 private const val TOKEN_STORE_FILE = "skilky_tokens.preferences_pb"

@@ -88,6 +88,25 @@ class ExpenseDaoTest {
             assertTrue(sut.getAll().first().isEmpty())
         }
 
+    @Test
+    fun `replaceSynced preserves pending rows`() =
+        runTest {
+            val sut = createSut()
+            sut.upsertAll(
+                listOf(
+                    anExpenseEntity(id = -1, name = "Pending"),
+                    anExpenseEntity(id = 1, name = "Old server row"),
+                ),
+            )
+
+            sut.replaceSynced(listOf(anExpenseEntity(id = 2, name = "Fresh server row")))
+
+            assertEquals(
+                setOf(-1L to "Pending", 2L to "Fresh server row"),
+                sut.getAll().first().map { it.id to it.name }.toSet(),
+            )
+        }
+
     private fun createSut(): ExpenseDao = database.expenseDao()
 
     private fun anExpenseEntity(

@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import com.vstorchevyi.skilky.data.remote.SessionEvents
+import com.vstorchevyi.skilky.data.sync.ExpenseSyncManager
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Either
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
@@ -38,6 +39,7 @@ import org.koin.compose.koinInject
 @Composable
 fun App() {
     MaterialTheme {
+        koinInject<ExpenseSyncManager>()
         val getCurrentSession = koinInject<GetCurrentSessionUseCase>()
         val sessionEvents = koinInject<SessionEvents>()
         val navController = rememberNavController()
