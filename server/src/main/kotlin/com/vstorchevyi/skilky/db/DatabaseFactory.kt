@@ -66,7 +66,7 @@ class DatabaseFactory(
         if (::dataSource.isInitialized) dataSource.close()
     }
 
-    /** Used by `/health/db`. Returns false on any failure so the endpoint can report degraded instead of 500. */
+    /** Used by `/api/v1/health/db`. Returns false on any failure so the endpoint can report degraded instead of 500. */
     suspend fun ping(): Boolean =
         withContext(Dispatchers.IO) {
             runCatching {

@@ -2,6 +2,7 @@ package com.vstorchevyi.skilky.ui.input
 
 import com.vstorchevyi.skilky.api.Currency
 import com.vstorchevyi.skilky.api.InputType
+import com.vstorchevyi.skilky.api.ParseTextResponse
 import com.vstorchevyi.skilky.api.ParsedExpenseItem
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Category
@@ -12,6 +13,7 @@ import com.vstorchevyi.skilky.domain.repository.FakeExpenseRepository
 import com.vstorchevyi.skilky.domain.repository.FakeParseRepository
 import com.vstorchevyi.skilky.domain.usecase.CreateExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
+import com.vstorchevyi.skilky.domain.usecase.ParseAudioUseCase
 import com.vstorchevyi.skilky.domain.usecase.ParseReceiptUseCase
 import com.vstorchevyi.skilky.domain.usecase.ParseTextUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
@@ -181,6 +183,142 @@ class InputViewModelTest {
             assertEquals(Currency.UAH, parser.receiptCalls.single().currency)
             assertEquals(InputType.IMAGE, sut.state.value.previewInputType)
             assertEquals("Milk", requireNotNull(sut.state.value.previewItems).single().name)
+        }
+
+    @Test
+    fun `audio parse opens voice preview`() =
+        runTestWithMain {
+            // Arrange
+            val parser =
+                FakeParseRepository().apply {
+                    audioResult =
+                        Either.Right(
+                            ParseTextResponse(
+                                items = listOf(parsed("Taxi", 120.0, categoryId = 8)),
+                                transcript = "taxi 120",
+                            ),
+                        )
+                }
+            val categories = FakeCategoryRepository(initial = listOf(category(8, "Transport")))
+            val sut = createSut(parser = parser, categories = categories)
+            val audio = wavBytes()
+            advanceUntilIdle()
+
+            // Act
+            sut.onAudioRecorded(audio)
+            advanceUntilIdle()
+
+            // Assert
+            assertEquals(1, parser.audioCalls.size)
+            assertTrue(parser.audioCalls.single().bytes.contentEquals(audio))
+            assertEquals(Currency.UAH, parser.audioCalls.single().currency)
+            assertEquals(InputType.AUDIO, sut.state.value.previewInputType)
+            assertEquals("Taxi", requireNotNull(sut.state.value.previewItems).single().name)
+        }
+
+    @Test
+    fun `empty audio parse exposes the transcript`() =
+        runTestWithMain {
+            // Arrange
+            val parser =
+                FakeParseRepository().apply {
+                    audioResult = Either.Right(ParseTextResponse(items = emptyList(), transcript = "coffee forty"))
+                }
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onAudioRecorded(wavBytes())
+            advanceUntilIdle()
+
+            // Assert
+            assertEquals(InputError.NoAudioItems("coffee forty"), sut.state.value.parseError)
+            assertNull(sut.state.value.previewItems)
+        }
+
+    @Test
+    fun `audio preview saves audio expenses`() =
+        runTestWithMain {
+            // Arrange
+            val parser =
+                FakeParseRepository().apply {
+                    audioResult =
+                        Either.Right(
+                            ParseTextResponse(
+                                items = listOf(parsed("Taxi", 120.0, categoryId = 8)),
+                                transcript = "taxi 120",
+                            ),
+                        )
+                }
+            val categories = FakeCategoryRepository(initial = listOf(category(8, "Transport")))
+            val expenses =
+                FakeExpenseRepository().apply {
+                    createAllResult = Either.Right(listOf(FakeExpenseRepository.defaultExpense(id = 1)))
+                }
+            val sut = createSut(parser = parser, categories = categories, expenses = expenses)
+            advanceUntilIdle()
+            sut.onAudioRecorded(wavBytes())
+            advanceUntilIdle()
+
+            // Act
+            sut.onSaveAll()
+            advanceUntilIdle()
+
+            // Assert
+            val call = assertIs<FakeExpenseRepository.Call.CreateAll>(expenses.calls.last())
+            assertEquals(InputType.AUDIO, call.inputs.single().inputType)
+            assertEquals(InputEvent.Saved(1), sut.events.first())
+        }
+
+    @Test
+    fun `unsupported audio is rejected before parsing`() =
+        runTestWithMain {
+            // Arrange
+            val parser = FakeParseRepository()
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onAudioRecorded("not audio".encodeToByteArray())
+            advanceUntilIdle()
+
+            // Assert
+            assertTrue(parser.audioCalls.isEmpty())
+            assertEquals(InputError.UnsupportedAudio, sut.state.value.parseError)
+        }
+
+    @Test
+    fun `oversized audio is rejected before parsing`() =
+        runTestWithMain {
+            // Arrange
+            val parser = FakeParseRepository()
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onAudioRecorded(ByteArray(10 * 1024 * 1024 + 1))
+            advanceUntilIdle()
+
+            // Assert
+            assertTrue(parser.audioCalls.isEmpty())
+            assertEquals(InputError.AudioTooLarge, sut.state.value.parseError)
+        }
+
+    @Test
+    fun `audio parse failure exposes mapped error`() =
+        runTestWithMain {
+            // Arrange
+            val parser = FakeParseRepository().apply { audioResult = Either.Left(AppError.Network) }
+            val sut = createSut(parser = parser)
+            advanceUntilIdle()
+
+            // Act
+            sut.onAudioRecorded(wavBytes())
+            advanceUntilIdle()
+
+            // Assert
+            assertEquals(InputError.Request(AppError.Network), sut.state.value.parseError)
+            assertFalse(sut.state.value.isParsing)
         }
 
     @Test
@@ -379,6 +517,7 @@ class InputViewModelTest {
     ): InputViewModel =
         InputViewModel(
             parseText = ParseTextUseCase(parser),
+            parseAudio = ParseAudioUseCase(parser),
             parseReceipt = ParseReceiptUseCase(parser),
             getCategories = GetCategoriesUseCase(categories),
             refreshCategories = RefreshCategoriesUseCase(categories),
@@ -388,6 +527,22 @@ class InputViewModelTest {
         )
 
     private fun jpegBytes(): ByteArray = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0, 0, 0, 0, 0)
+
+    private fun wavBytes(): ByteArray =
+        byteArrayOf(
+            0x52,
+            0x49,
+            0x46,
+            0x46,
+            0,
+            0,
+            0,
+            0,
+            0x57,
+            0x41,
+            0x56,
+            0x45,
+        )
 
     private fun parsed(
         name: String,

@@ -9,17 +9,28 @@ Skilky is a budget tracker for people who will not open a spreadsheet. You log s
 
 ## Quickstart
 
-Goal: `curl localhost:8080/health` returns `{"status":"ok"}` on a fresh clone.
+Goal: `curl localhost:8080/api/v1/health` returns `{"status":"ok","version":"1.0.0"}` on a fresh clone.
 
-Prereqs: JDK 21, Docker, ~10 GB free disk for the model and the DB.
+Prereqs: JDK 21, Docker, ~12 GB free disk for the model and the DB.
 
-Start Postgres, Ollama, and the one-shot model pull:
+On macOS, run Ollama natively so it can use Metal. Docker Desktop for macOS does not pass the
+Apple GPU through to Linux containers, and receipt parsing can take several minutes on CPU only:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d postgres
+ollama pull gemma4:e4b
+ollama serve # skip this when the Ollama menu bar app is already running
+```
+
+On Linux or Windows with a supported container GPU, start Postgres, Ollama, and the one-shot
+model pull:
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The `ollama-pull` container downloads `gemma4:e4b` (~5 GB) on first run, then exits. Tail it until it does:
+The `ollama-pull` container downloads `gemma4:e4b` (about 10 GB) on first run, then exits. Tail it
+until it does:
 
 ```bash
 docker compose -f docker/docker-compose.yml logs -f ollama-pull
@@ -34,8 +45,8 @@ Then run the server:
 And the smoke test, in another terminal:
 
 ```bash
-curl localhost:8080/health
-# {"status":"ok"}
+curl localhost:8080/api/v1/health
+# {"status":"ok","version":"1.0.0"}
 ```
 
 `application.conf` ships dev defaults that match the docker-compose values, so no env vars are needed locally. For production, set `JWT_SECRET`, `REFRESH_TOKEN_PEPPER`, and `POSTGRES_PASSWORD` at minimum. Full env reference: [`docs/deployment.md`](docs/deployment.md).

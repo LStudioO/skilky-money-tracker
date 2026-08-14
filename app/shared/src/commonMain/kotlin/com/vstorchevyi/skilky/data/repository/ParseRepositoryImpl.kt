@@ -19,6 +19,13 @@ internal class ParseRepositoryImpl(
             api.parseText(ParseTextRequest(text = text, currency = currency)).items
         }
 
+    override suspend fun parseAudio(
+        bytes: ByteArray,
+        currency: Currency,
+    ) = runCatchingApi {
+        api.parseAudio(bytes = bytes, currency = currency)
+    }
+
     override suspend fun parseReceipt(
         bytes: ByteArray,
         currency: Currency,

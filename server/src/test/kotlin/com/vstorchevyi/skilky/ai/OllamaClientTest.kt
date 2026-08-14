@@ -7,16 +7,19 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.io.IOException
@@ -40,6 +43,29 @@ class OllamaClientTest {
 
             // Assert
             result.containsKey("items") shouldBe true
+        }
+    }
+
+    @Test
+    fun `chatJson disables model thinking`() {
+        runBlocking {
+            // Arrange
+            var requestBody = ""
+            val engine =
+                MockEngine { request ->
+                    requestBody = (request.body as TextContent).text
+                    respond(
+                        content = chatResponse(content = """{"items":[]}"""),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val sut = createSut(engine)
+
+            // Act
+            sut.chatJson("system", "user", emptyFormat())
+
+            // Assert
+            Json.parseToJsonElement(requestBody).jsonObject["think"].toString() shouldBe "false"
         }
     }
 
@@ -99,6 +125,33 @@ class OllamaClientTest {
         }
     }
 
+    @Test
+    fun `chatAudioJson uses the configured audio timeout`() {
+        runBlocking {
+            // Arrange
+            var requestTimeoutMillis: Long? = null
+            var socketTimeoutMillis: Long? = null
+            val engine =
+                MockEngine { request ->
+                    val timeout = request.getCapabilityOrNull(HttpTimeoutCapability)
+                    requestTimeoutMillis = timeout?.requestTimeoutMillis
+                    socketTimeoutMillis = timeout?.socketTimeoutMillis
+                    respond(
+                        content = chatResponse(content = """{"items":[]}"""),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val sut = createSut(engine)
+
+            // Act
+            sut.chatAudioJson("system", "user", emptyFormat(), byteArrayOf(1, 2, 3))
+
+            // Assert
+            requestTimeoutMillis shouldBe 180_000L
+            socketTimeoutMillis shouldBe 180_000L
+        }
+    }
+
     private fun createSut(engine: MockEngine): OllamaClient =
         OllamaClient(
             config =
@@ -106,6 +159,7 @@ class OllamaClientTest {
                     baseUrl = "http://ollama.test",
                     model = "gemma4:e4b",
                     timeoutSeconds = 30,
+                    audioTimeoutSeconds = 180,
                     keepAlive = "5m",
                 ),
             httpClient =

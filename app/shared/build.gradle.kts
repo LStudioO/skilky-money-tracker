@@ -99,6 +99,7 @@ kotlin {
         // One Ktor engine per platform. The HTTP client is created in
         // commonMain from an expect/actual engine; see HttpClientFactory.
         androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
             implementation(libs.ktorMp.okhttp)
         }
         iosMain.dependencies {

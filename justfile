@@ -13,6 +13,25 @@ up:
 down:
     docker compose -f docker/docker-compose.yml down
 
+# Start only Postgres. Use this with native Ollama on macOS.
+db:
+    docker compose -f docker/docker-compose.yml up -d postgres
+
+# Run the native Ollama server in the foreground.
+ollama:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        for candidate in \
+            "$HOME/Applications/Ollama.app/Contents/Resources/ollama" \
+            "/Applications/Ollama.app/Contents/Resources/ollama"; do
+            if [[ -x "$candidate" ]]; then
+                exec "$candidate" serve
+            fi
+        done
+    fi
+    exec ollama serve
+
 # Wipe the local stack including volumes. Destructive.
 nuke:
     docker compose -f docker/docker-compose.yml down -v
@@ -33,13 +52,13 @@ fmt:
 check:
     ./gradlew spotlessApply detekt :server:test
 
-# GET /health from the running server.
+# GET /api/v1/health from the running server.
 health:
-    curl -s http://localhost:8080/health
+    curl -s http://localhost:8080/api/v1/health
 
 # Pull (or re-pull) a chat model. Defaults to gemma4:e4b.
 pull-model model='gemma4:e4b':
-    docker compose -f docker/docker-compose.yml run --rm -e OLLAMA_MODEL={{model}} ollama-pull
+    docker compose -f docker/docker-compose.yml run --rm -e OLLAMA_MODEL={{ model }} ollama-pull
 
 # psql into the dev DB.
 psql:

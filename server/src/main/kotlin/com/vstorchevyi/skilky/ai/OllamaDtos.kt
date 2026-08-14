@@ -14,6 +14,7 @@ internal data class OllamaChatRequest(
     val messages: List<OllamaMessage>,
     val format: JsonObject? = null,
     val stream: Boolean = false,
+    val think: Boolean,
     val options: OllamaOptions? = null,
     /**
      * How long Ollama keeps the model loaded after this request finishes.

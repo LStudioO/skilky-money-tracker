@@ -4,10 +4,15 @@ import androidx.datastore.core.DataStore
 import com.vstorchevyi.skilky.data.local.CategoryDao
 import com.vstorchevyi.skilky.data.local.ExpenseDao
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.datetime.TimeZone
 import org.koin.core.annotation.KoinExperimentalAPI
+import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import org.koin.test.verify.verify
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertSame
+import kotlin.time.Clock
 
 /**
  * Static check of the production Koin graph: `verify` walks every binding's
@@ -40,5 +45,19 @@ class AppModulesVerificationTest {
                     HttpClientEngine::class,
                 ),
         )
+    }
+
+    @Test
+    fun `the production Koin graph provides input time dependencies`() {
+        // Arrange
+        val application = koinApplication { modules(appModules) }
+
+        try {
+            // Act + Assert
+            assertSame(Clock.System, application.koin.get<Clock>())
+            assertEquals(TimeZone.currentSystemDefault(), application.koin.get<TimeZone>())
+        } finally {
+            application.close()
+        }
     }
 }

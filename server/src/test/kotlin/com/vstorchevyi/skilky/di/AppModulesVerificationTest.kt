@@ -79,6 +79,7 @@ class AppModulesVerificationTest {
                     baseUrl = "http://localhost:11434",
                     model = "test-model",
                     timeoutSeconds = 30,
+                    audioTimeoutSeconds = 180,
                     keepAlive = "5m",
                 ),
         )

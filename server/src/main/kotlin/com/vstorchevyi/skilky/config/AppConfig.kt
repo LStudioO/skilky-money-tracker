@@ -67,9 +67,10 @@ data class AppConfig(
      * the nullable [DatabaseConfig]: presence of [baseUrl] is the signal
      * to read the rest.
      *
-     * @property timeoutSeconds Single per-request timeout covering connect,
-     *   socket, and overall request time. Generous default because local
-     *   models on CPU are slow; tune down once the model is on GPU.
+     * @property timeoutSeconds Standard per-request timeout covering connect,
+     *   socket, and overall request time.
+     * @property audioTimeoutSeconds Overall and socket timeout for audio
+     *   requests. Audio decoding and model cold starts need a larger budget.
      * @property keepAlive How long Ollama keeps the model loaded after
      *   a request. Ollama's default is 5 minutes; bumping to 30 minutes
      *   avoids paying a ~10 s cold-start on sparse traffic. `"-1"` pins
@@ -79,6 +80,7 @@ data class AppConfig(
         val baseUrl: String,
         val model: String,
         val timeoutSeconds: Int,
+        val audioTimeoutSeconds: Int,
         val keepAlive: String,
     )
 
@@ -132,6 +134,8 @@ data class AppConfig(
                             baseUrl = config.property("skilky.ai.baseUrl").getString(),
                             model = config.property("skilky.ai.model").getString(),
                             timeoutSeconds = config.property("skilky.ai.timeoutSeconds").getString().toInt(),
+                            audioTimeoutSeconds =
+                                config.property("skilky.ai.audioTimeoutSeconds").getString().toInt(),
                             keepAlive = config.property("skilky.ai.keepAlive").getString(),
                         )
                     },

@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory
  * receipt photo). Each method:
  * 1. Loads the user's visible categories (defaults plus any they made).
  * 2. Builds the right prompt and response schema from [PromptTemplates].
- * 3. Calls [OllamaClient.chatJson], attaching the modality's binary
- *    bytes to [OllamaClient.chatJson]'s `inputs` for audio and receipts.
+ * 3. Calls [OllamaClient], attaching the modality's binary bytes for
+ *    audio and receipts.
  * 4. Maps the JSON to [ParsedExpenseItem]s, resolving
  *    [ParsedExpenseItem.suggestedCategoryName] back to a real
  *    [ParsedExpenseItem.suggestedCategoryId] via case-insensitive name
@@ -65,17 +65,55 @@ class TextParsingService(
         userId: Long,
     ): ParseTextResponse {
         val startNanos = System.nanoTime()
+        val diagnostics = audio.wavAudioDiagnostics()
+        log.debug(
+            if (diagnostics == null) {
+                "parse.audio_input bytes=${audio.size} signal=unavailable"
+            } else {
+                "parse.audio_input bytes=${audio.size} duration_ms=${diagnostics.durationMs} " +
+                    "peak=${diagnostics.peak} rms=${diagnostics.rms}"
+            },
+        )
         val categories = loadCategories(userId)
         val raw =
-            ollamaClient.chatJson(
-                systemPrompt = PromptTemplates.systemPromptAudio(categories),
-                userPrompt = PromptTemplates.userPromptAudio(currency),
+            ollamaClient.chatAudioJson(
+                systemPrompt = PromptTemplates.systemPromptAudio(categories, currency),
+                userPrompt = "",
                 responseFormat = PromptTemplates.responseSchemaAudio,
-                inputs = listOf(audio),
+                audio = audio,
             )
-        val response = raw.decodeResponse(currency, categories, includeTranscript = true)
+        val audioResponse = raw.decodeResponse(currency, categories, includeTranscript = true)
+        log.debug(
+            "parse.audio_model transcript=\"${audioResponse.transcript.orEmpty().forAudioLog()}\" " +
+                "items=${audioResponse.items.size}",
+        )
+        val response = retryTranscriptWhenAudioItemsAreEmpty(audioResponse, currency, categories)
         logParseComplete(modality = "audio", startNanos = startNanos, response = response)
         return response
+    }
+
+    private suspend fun retryTranscriptWhenAudioItemsAreEmpty(
+        audioResponse: ParseTextResponse,
+        currency: Currency,
+        categories: List<CategoryHint>,
+    ): ParseTextResponse {
+        val transcript = audioResponse.transcript?.takeIf { it.isNotBlank() }
+        if (audioResponse.items.isNotEmpty() || transcript == null) return audioResponse
+
+        val fallback =
+            try {
+                ollamaClient
+                    .chatJson(
+                        systemPrompt = PromptTemplates.systemPromptText(categories),
+                        userPrompt = PromptTemplates.userPromptText(transcript, currency),
+                        responseFormat = PromptTemplates.responseSchemaText,
+                    ).decodeResponse(currency, categories)
+            } catch (cause: AiUnavailableException) {
+                log.warn("parse.audio_fallback_failed transcript_len=${transcript.length}", cause)
+                return audioResponse
+            }
+        log.info("parse.audio_fallback transcript_len=${transcript.length} items=${fallback.items.size}")
+        return fallback.copy(transcript = transcript)
     }
 
     /**

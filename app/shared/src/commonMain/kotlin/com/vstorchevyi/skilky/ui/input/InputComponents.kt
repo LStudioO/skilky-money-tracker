@@ -17,6 +17,8 @@ import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -33,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +56,10 @@ import kotlinx.datetime.LocalDate
 internal data class InputActions(
     val onQueryChange: (String) -> Unit = {},
     val onSubmit: () -> Unit = {},
+    val onStartAudioRecording: () -> Unit = {},
+    val onStopAudioRecording: () -> Unit = {},
+    val canRecordAudio: Boolean = false,
+    val isAudioRecording: Boolean = false,
     val onPickReceipt: () -> Unit = {},
     val onCaptureReceipt: () -> Unit = {},
     val canCaptureReceipt: Boolean = false,
@@ -86,17 +93,18 @@ internal fun QuickEntryBar(
                 label = { Text("Add expenses") },
                 placeholder = { Text("Milk 45, bread 22") },
                 singleLine = true,
-                enabled = !state.isParsing,
+                enabled = !state.isParsing && !actions.isAudioRecording,
                 isError = state.parseError != null,
                 supportingText = state.parseError?.let { error -> { Text(error.toMessage()) } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { actions.onSubmit() }),
                 modifier = Modifier.weight(1f),
             )
+            AudioButton(enabled = !state.isParsing, actions = actions)
             ReceiptMenu(enabled = !state.isParsing, actions = actions)
             Button(
                 onClick = actions.onSubmit,
-                enabled = state.canSubmit,
+                enabled = state.canSubmit && !actions.isAudioRecording,
             ) {
                 if (state.isParsing) {
                     CircularProgressIndicator(
@@ -112,6 +120,29 @@ internal fun QuickEntryBar(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AudioButton(
+    enabled: Boolean,
+    actions: InputActions,
+) {
+    if (!actions.canRecordAudio) return
+    IconButton(
+        onClick = {
+            if (actions.isAudioRecording) {
+                actions.onStopAudioRecording()
+            } else {
+                actions.onStartAudioRecording()
+            }
+        },
+        enabled = enabled,
+    ) {
+        Icon(
+            imageVector = if (actions.isAudioRecording) Icons.Outlined.Stop else Icons.Outlined.Mic,
+            contentDescription = if (actions.isAudioRecording) "Stop recording" else "Record voice note",
+        )
     }
 }
 
@@ -158,7 +189,11 @@ internal fun ParsePreviewSheet(
     actions: InputActions,
 ) {
     val items = state.previewItems ?: return
-    ModalBottomSheet(onDismissRequest = actions.onDismissPreview) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = actions.onDismissPreview,
+        sheetState = sheetState,
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
         ) {
@@ -336,6 +371,9 @@ private fun PreviewActions(
 private fun InputError.toMessage(): String =
     when (this) {
         InputError.NoItems -> "No expenses found. Try rephrasing."
+        is InputError.NoAudioItems -> "No expenses found. Heard: \"${transcript.trim()}\". Try rephrasing."
+        InputError.UnsupportedAudio -> "Record a WAV voice note and try again."
+        InputError.AudioTooLarge -> "Voice notes must be 10 MB or smaller."
         InputError.UnsupportedImage -> "Choose a JPEG or PNG receipt image."
         InputError.ImageTooLarge -> "Receipt images must be 10 MB or smaller."
         is InputError.Request -> error.toMessage()

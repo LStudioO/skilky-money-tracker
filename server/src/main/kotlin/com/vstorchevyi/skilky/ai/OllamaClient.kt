@@ -8,6 +8,7 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -42,18 +43,47 @@ class OllamaClient(
      * so the content is JSON; if it is not, we surface that as
      * [AiUnavailableException] (the model misbehaved).
      *
-     * @param inputs optional binary blobs (WAV audio or image bytes) the
-     *   model should consider alongside [userPrompt]. Base64-encoded
-     *   into the request's `images` field — Ollama detects audio vs
-     *   image by magic bytes. Empty for text-only calls.
+     * @param inputs optional image bytes the model should consider alongside
+     *   [userPrompt]. Base64-encoded into the request's `images` field. Empty
+     *   for text-only calls. Audio callers use [chatAudioJson].
      */
     suspend fun chatJson(
         systemPrompt: String,
         userPrompt: String,
         responseFormat: JsonObject,
         inputs: List<ByteArray> = emptyList(),
+    ): JsonObject =
+        executeChatJson(
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            responseFormat = responseFormat,
+            inputs = inputs,
+            requestTimeoutSeconds = config.timeoutSeconds,
+        )
+
+    /** Sends WAV audio with the longer timeout reserved for voice parsing. */
+    suspend fun chatAudioJson(
+        systemPrompt: String,
+        userPrompt: String,
+        responseFormat: JsonObject,
+        audio: ByteArray,
+    ): JsonObject =
+        executeChatJson(
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            responseFormat = responseFormat,
+            inputs = listOf(audio),
+            requestTimeoutSeconds = config.audioTimeoutSeconds,
+        )
+
+    private suspend fun executeChatJson(
+        systemPrompt: String,
+        userPrompt: String,
+        responseFormat: JsonObject,
+        inputs: List<ByteArray>,
+        requestTimeoutSeconds: Int,
     ): JsonObject {
-        val response = sendChat(systemPrompt, userPrompt, responseFormat, inputs)
+        val response = sendChat(systemPrompt, userPrompt, responseFormat, inputs, requestTimeoutSeconds)
         if (!response.status.isSuccessfulOllamaStatus()) {
             throw AiUnavailableException(
                 "Ollama returned ${response.status.value}",
@@ -79,9 +109,15 @@ class OllamaClient(
         userPrompt: String,
         responseFormat: JsonObject,
         inputs: List<ByteArray>,
+        requestTimeoutSeconds: Int,
     ): HttpResponse =
         try {
             httpClient.post("${config.baseUrl.trimEnd('/')}/api/chat") {
+                timeout {
+                    val total = requestTimeoutSeconds * MILLIS_PER_SECOND
+                    requestTimeoutMillis = total
+                    socketTimeoutMillis = total
+                }
                 contentType(ContentType.Application.Json)
                 setBody(
                     OllamaChatRequest(
@@ -102,15 +138,17 @@ class OllamaClient(
                             ),
                         format = responseFormat,
                         stream = false,
+                        // Parse endpoints need schema-constrained output, not a separate reasoning trace.
+                        think = false,
                         options = GEMMA4_SAMPLING,
                         keepAlive = config.keepAlive,
                     ),
                 )
             }
-        } catch (cause: IOException) {
-            throw AiUnavailableException("Cannot reach Ollama at ${config.baseUrl}: ${cause.message}", cause)
         } catch (cause: HttpRequestTimeoutException) {
             throw AiUnavailableException("Ollama timed out: ${cause.message}", cause)
+        } catch (cause: IOException) {
+            throw AiUnavailableException("Cannot reach Ollama at ${config.baseUrl}: ${cause.message}", cause)
         }
 
     private fun HttpStatusCode.isSuccessfulOllamaStatus(): Boolean = value in HTTP_OK..HTTP_OK_MAX

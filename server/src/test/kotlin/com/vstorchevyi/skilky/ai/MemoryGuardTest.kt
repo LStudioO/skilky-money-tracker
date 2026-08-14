@@ -61,6 +61,7 @@ class MemoryGuardTest {
             baseUrl = "http://localhost:11434",
             model = "gemma4:e4b",
             timeoutSeconds = 60,
+            audioTimeoutSeconds = 180,
             keepAlive = "30m",
         )
 

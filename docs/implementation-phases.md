@@ -19,7 +19,7 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
   - Applied to all modules via convention plugins
 - Create `:shared:models` with `Currency` enum + `ApiRoutes` object
 - Create `:shared:core` with `DateUtils` placeholder
-- Create `:server` with minimal Ktor application (`GET /health` → `{"status": "ok"}`)
+- Create `:server` with minimal Ktor application (`GET /api/v1/health` → `{"status": "ok"}`)
 - Create `docker/docker-compose.yml` with just postgres + backend services
 - Set up `.github/workflows/build.yml` with lint + build jobs
 
@@ -29,7 +29,7 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 - `./gradlew detekt` passes with no issues
 - `./gradlew spotlessCheck` passes (formatting correct)
 - `./gradlew :server:run` starts Ktor on port 8080
-- `curl localhost:8080/health` returns `{"status": "ok"}`
+- `curl localhost:8080/api/v1/health` returns `{"status": "ok"}`
 - `./gradlew :composeApp:assembleDebug` produces installable APK
 - Android app launches and shows a placeholder screen
 - GitHub Actions lint + build workflow passes
@@ -122,15 +122,15 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 
 > **Update (2026-05):** Server side landed alongside Phase 4. **No Whisper service, no separate vision model** — `gemma4:e4b` handles audio (WAV 16 kHz mono, ≤30-60 s) and receipt images natively via Ollama. Saves one container and one model pull. Client work (recorders, picker, UI) is still pending.
 
-> **Update (2026-08):** Receipt input is implemented on the client. Android and iOS can take a photo or choose an image; desktop can choose an image. Parsed receipt items use the existing review sheet and are saved with `InputType.IMAGE`. Audio recording remains pending.
+> **Update (2026-08-02):** Receipt input is implemented on the client. Android and iOS can take a photo or choose an image; desktop can choose an image. Parsed receipt items use the existing review sheet and are saved with `InputType.IMAGE`. Android and iOS voice notes record 16 kHz mono WAV, use the same review sheet, and save as `InputType.AUDIO`. Desktop recording still needs a platform actual.
 
 ### Deliverables
 
 - ~~Server: `WhisperService` — Ktor Client calling Speaches `/v1/audio/transcriptions`~~ (not needed)
 - Server: `ParseRoutes` — `POST /parse/audio`, `POST /parse/receipt`
 - ~~Server: Receipt vision via Ollama with LLaVA/Moondream model~~ (Gemma 4 instead)
-- Client: `AudioRecorder` (expect/actual — Android `AudioRecord`+WAV header, iOS `AVAudioRecorder` PCM)
-- Client: Audio button in `QuickEntryBar` — record, show recording indicator, send to server
+- Client: `AudioRecorder` (expect/actual — Android `AudioRecord`+WAV header and iOS `AVAudioRecorder` PCM implemented)
+- Client: Audio button in `QuickEntryBar` — Android and iOS record, show recording indicator, send to server
 - Client: Camera/gallery image picker (FileKit with platform camera launchers)
 - Client: Receipt action in `QuickEntryBar` — capture/pick image, send to server
 - ~~Docker: Add `whisper` (Speaches) service to docker-compose.yml~~ (not needed)
