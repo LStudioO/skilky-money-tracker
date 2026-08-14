@@ -133,7 +133,10 @@ internal class ExpenseRepositoryImpl(
         return if (reset is Either.Left) reset else syncPending()
     }
 
-    override suspend fun deletePending(id: Long): Either<AppError, Unit> = runCatchingStorage { syncQueueDao.deleteQueuedExpense(id) }
+    override suspend fun deletePending(id: Long): Either<AppError, Unit> {
+        val result = runCatchingStorage { syncQueueDao.deleteQueuedExpense(id) }
+        return result
+    }
 
     override suspend fun create(input: ExpenseInput): Either<AppError, Expense> {
         val result = createAll(listOf(input))
