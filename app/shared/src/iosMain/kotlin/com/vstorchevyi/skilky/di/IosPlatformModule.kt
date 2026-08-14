@@ -5,7 +5,6 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import com.vstorchevyi.skilky.data.local.MIGRATION_1_2
 import com.vstorchevyi.skilky.data.local.SkilkyDatabase
 import com.vstorchevyi.skilky.data.sync.IosNetworkMonitor
 import com.vstorchevyi.skilky.data.sync.NetworkMonitor
@@ -41,7 +40,6 @@ private val iosPlatformModule: Module =
                 name = documentsPath(DATABASE_FILE).toString(),
             )
                 .setDriver(BundledSQLiteDriver())
-                .addMigrations(MIGRATION_1_2)
                 .build()
         }
         single { get<SkilkyDatabase>().categoryDao() }
