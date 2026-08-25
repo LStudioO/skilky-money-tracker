@@ -11,6 +11,9 @@ internal interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY isDefault DESC, name COLLATE NOCASE ASC")
     fun getAll(): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): CategoryEntity?
+
     @Upsert
     suspend fun upsertAll(categories: List<CategoryEntity>)
 

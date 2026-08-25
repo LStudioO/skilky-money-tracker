@@ -6,6 +6,7 @@ import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.data.local.ExpenseEntity
 import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.model.ExpenseCategorySnapshot
+import com.vstorchevyi.skilky.domain.model.ExpenseSyncStatus
 import kotlinx.datetime.LocalDate
 
 /**
@@ -29,7 +30,9 @@ internal fun ExpenseResponse.toEntity(): ExpenseEntity =
         createdAtMillis = createdAt.toEpochMilliseconds(),
     )
 
-internal fun ExpenseEntity.toDomain(): Expense =
+internal fun ExpenseEntity.toDomain(
+    syncStatus: ExpenseSyncStatus = if (id < 0) ExpenseSyncStatus.PENDING else ExpenseSyncStatus.SYNCED,
+): Expense =
     Expense(
         id = id,
         name = name,
@@ -46,4 +49,5 @@ internal fun ExpenseEntity.toDomain(): Expense =
         inputType = InputType.valueOf(inputType),
         date = LocalDate.parse(dateIso),
         createdAt = kotlin.time.Instant.fromEpochMilliseconds(createdAtMillis),
+        syncStatus = syncStatus,
     )

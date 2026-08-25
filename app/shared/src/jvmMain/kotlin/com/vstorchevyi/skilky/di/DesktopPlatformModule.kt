@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.vstorchevyi.skilky.data.local.SkilkyDatabase
+import com.vstorchevyi.skilky.data.sync.DesktopNetworkMonitor
+import com.vstorchevyi.skilky.data.sync.NetworkMonitor
 import okio.Path.Companion.toPath
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -33,6 +35,8 @@ val desktopPlatformModule: Module =
         }
         single { get<SkilkyDatabase>().categoryDao() }
         single { get<SkilkyDatabase>().expenseDao() }
+        single { get<SkilkyDatabase>().syncQueueDao() }
+        single<NetworkMonitor> { DesktopNetworkMonitor() }
     }
 
 private fun skilkyDir(): File {

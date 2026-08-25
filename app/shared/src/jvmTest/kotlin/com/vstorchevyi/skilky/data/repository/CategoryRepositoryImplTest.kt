@@ -231,6 +231,8 @@ class CategoryRepositoryImplTest {
     private class FailingReadCategoryDao : CategoryDao {
         override fun getAll(): Flow<List<CategoryEntity>> = flow { error("disk unavailable") }
 
+        override suspend fun getById(id: Long): CategoryEntity? = null
+
         override suspend fun upsertAll(categories: List<CategoryEntity>) = Unit
 
         override suspend fun deleteById(id: Long) = Unit

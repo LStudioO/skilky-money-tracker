@@ -23,9 +23,18 @@ internal interface ExpenseDao {
     @Query("DELETE FROM expenses")
     suspend fun clear()
 
+    @Query("DELETE FROM expenses WHERE id >= 0")
+    suspend fun clearSynced()
+
     @Transaction
     suspend fun replaceAll(items: List<ExpenseEntity>) {
         clear()
+        upsertAll(items)
+    }
+
+    @Transaction
+    suspend fun replaceSynced(items: List<ExpenseEntity>) {
+        clearSynced()
         upsertAll(items)
     }
 }

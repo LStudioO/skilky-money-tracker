@@ -3,6 +3,8 @@ package com.vstorchevyi.skilky.di
 import androidx.datastore.core.DataStore
 import com.vstorchevyi.skilky.data.local.CategoryDao
 import com.vstorchevyi.skilky.data.local.ExpenseDao
+import com.vstorchevyi.skilky.data.local.SyncQueueDao
+import com.vstorchevyi.skilky.data.sync.NetworkMonitor
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.datetime.TimeZone
 import org.koin.core.annotation.KoinExperimentalAPI
@@ -42,6 +44,8 @@ class AppModulesVerificationTest {
                     DataStore::class,
                     CategoryDao::class,
                     ExpenseDao::class,
+                    SyncQueueDao::class,
+                    NetworkMonitor::class,
                     HttpClientEngine::class,
                 ),
         )

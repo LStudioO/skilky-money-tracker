@@ -122,7 +122,7 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 
 > **Update (2026-05):** Server side landed alongside Phase 4. **No Whisper service, no separate vision model** — `gemma4:e4b` handles audio (WAV 16 kHz mono, ≤30-60 s) and receipt images natively via Ollama. Saves one container and one model pull. Client work (recorders, picker, UI) is still pending.
 
-> **Update (2026-08-02):** Receipt input is implemented on the client. Android and iOS can take a photo or choose an image; desktop can choose an image. Parsed receipt items use the existing review sheet and are saved with `InputType.IMAGE`. Android and iOS voice notes record 16 kHz mono WAV, use the same review sheet, and save as `InputType.AUDIO`. Desktop recording still needs a platform actual.
+> **Update (2026-08-14):** Receipt input is implemented on the client. Android and iOS can take a photo or choose an image; desktop can choose an image. Parsed receipt items use the existing review sheet and are saved with `InputType.IMAGE`. Android, iOS, and desktop voice notes record 16 kHz mono WAV, use the same review sheet, and save as `InputType.AUDIO`.
 
 ### Deliverables
 
@@ -153,6 +153,13 @@ Ordered for a solo developer learning as they go. Each phase has a clear goal, d
 > `POST /expenses` already upserts on the `(user_id, client_id)` unique index, so the
 > batch endpoint is the sync endpoint. No separate `POST /expenses/sync` route is needed.
 > Everything left in this phase is client work.
+
+> **Update (2026-08-14):** Confirmed expenses are written locally first and added to a
+> persistent FIFO sync queue with stable client IDs, retry counts, and pending, processing,
+> and failed states. Upload retries replace local rows atomically, refresh preserves queued
+> expenses, and the home list labels pending rows. Android and iOS retry on connectivity
+> changes; desktop retries periodically. Launch-time sync also pulls the latest server page.
+> After five failed uploads, the home list shows retry and delete actions for the queued expense.
 
 ### Deliverables
 

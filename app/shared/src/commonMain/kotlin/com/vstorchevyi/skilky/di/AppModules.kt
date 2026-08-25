@@ -12,6 +12,7 @@ import com.vstorchevyi.skilky.data.repository.AuthRepositoryImpl
 import com.vstorchevyi.skilky.data.repository.CategoryRepositoryImpl
 import com.vstorchevyi.skilky.data.repository.ExpenseRepositoryImpl
 import com.vstorchevyi.skilky.data.repository.ParseRepositoryImpl
+import com.vstorchevyi.skilky.data.sync.ExpenseSyncManager
 import com.vstorchevyi.skilky.domain.repository.AuthRepository
 import com.vstorchevyi.skilky.domain.repository.CategoryRepository
 import com.vstorchevyi.skilky.domain.repository.ExpenseRepository
@@ -21,6 +22,7 @@ import com.vstorchevyi.skilky.domain.usecase.CreateExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.CreateExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.DeleteExpenseUseCase
+import com.vstorchevyi.skilky.domain.usecase.DeletePendingExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetExpenseUseCase
@@ -33,6 +35,7 @@ import com.vstorchevyi.skilky.domain.usecase.ParseTextUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshCategoriesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.RegisterUseCase
+import com.vstorchevyi.skilky.domain.usecase.RetryPendingExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.UpdateCategoryUseCase
 import com.vstorchevyi.skilky.domain.usecase.UpdateExpenseUseCase
 import com.vstorchevyi.skilky.ui.auth.LoginViewModel
@@ -41,6 +44,9 @@ import com.vstorchevyi.skilky.ui.categories.CategoriesViewModel
 import com.vstorchevyi.skilky.ui.expense.ExpenseFormViewModel
 import com.vstorchevyi.skilky.ui.home.HomeViewModel
 import com.vstorchevyi.skilky.ui.input.InputViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.datetime.TimeZone
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
@@ -82,8 +88,19 @@ internal val dataModule: Module =
         singleOf(::DataStoreTokenStorage) bind TokenStorage::class
         singleOf(::AuthRepositoryImpl) bind AuthRepository::class
         single<CategoryRepository> { CategoryRepositoryImpl(dao = get(), api = get()) }
-        single<ExpenseRepository> { ExpenseRepositoryImpl(dao = get(), api = get()) }
+        single<ExpenseRepository> {
+            ExpenseRepositoryImpl(
+                dao = get(),
+                categoryDao = get(),
+                syncQueueDao = get(),
+                api = get(),
+            )
+        }
         singleOf(::ParseRepositoryImpl) bind ParseRepository::class
+        single { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
+        single {
+            ExpenseSyncManager(networkMonitor = get(), repository = get(), scope = get())
+        }
     }
 
 internal val domainModule: Module =
@@ -104,6 +121,8 @@ internal val domainModule: Module =
         factoryOf(::CreateExpensesUseCase)
         factoryOf(::UpdateExpenseUseCase)
         factoryOf(::DeleteExpenseUseCase)
+        factoryOf(::RetryPendingExpenseUseCase)
+        factoryOf(::DeletePendingExpenseUseCase)
         factoryOf(::ParseTextUseCase)
         factoryOf(::ParseAudioUseCase)
         factoryOf(::ParseReceiptUseCase)

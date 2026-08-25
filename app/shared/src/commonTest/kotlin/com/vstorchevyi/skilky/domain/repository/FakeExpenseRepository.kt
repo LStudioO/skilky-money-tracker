@@ -30,6 +30,9 @@ class FakeExpenseRepository(
     private val expenses = MutableStateFlow<Either<AppError, List<Expense>>>(Either.Right(initial))
 
     var refreshResult: Either<AppError, Unit> = Either.Right(Unit)
+    var syncPendingResult: Either<AppError, Unit> = Either.Right(Unit)
+    var retryPendingResult: Either<AppError, Unit> = Either.Right(Unit)
+    var deletePendingResult: Either<AppError, Unit> = Either.Right(Unit)
     var createResult: Either<AppError, Expense> = Either.Right(defaultExpense())
     var createAllResult: Either<AppError, List<Expense>> = Either.Right(emptyList())
     var updateResult: Either<AppError, Expense> = Either.Right(defaultExpense())
@@ -45,6 +48,21 @@ class FakeExpenseRepository(
     override suspend fun refresh(): Either<AppError, Unit> {
         calls += Call.Refresh
         return refreshResult
+    }
+
+    override suspend fun syncPending(): Either<AppError, Unit> = syncPendingResult
+
+    override suspend fun retryPending(id: Long): Either<AppError, Unit> {
+        calls += Call.RetryPending(id)
+        return retryPendingResult
+    }
+
+    override suspend fun deletePending(id: Long): Either<AppError, Unit> {
+        calls += Call.DeletePending(id)
+        if (deletePendingResult is Either.Right) {
+            expenses.update { result -> result.map { list -> list.filterNot { it.id == id } } }
+        }
+        return deletePendingResult
     }
 
     override suspend fun create(input: ExpenseInput): Either<AppError, Expense> {
@@ -110,6 +128,14 @@ class FakeExpenseRepository(
         ) : Call
 
         data class Delete(
+            val id: Long,
+        ) : Call
+
+        data class RetryPending(
+            val id: Long,
+        ) : Call
+
+        data class DeletePending(
             val id: Long,
         ) : Call
     }

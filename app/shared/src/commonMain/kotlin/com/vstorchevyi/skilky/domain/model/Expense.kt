@@ -20,7 +20,19 @@ data class Expense(
     val inputType: InputType,
     val date: LocalDate,
     val createdAt: Instant,
-)
+    val syncStatus: ExpenseSyncStatus = ExpenseSyncStatus.SYNCED,
+) {
+    /** Unsynced rows use local negative IDs until sync replaces them. */
+    val isPending: Boolean
+        get() = syncStatus != ExpenseSyncStatus.SYNCED
+}
+
+enum class ExpenseSyncStatus {
+    SYNCED,
+    PENDING,
+    PROCESSING,
+    FAILED,
+}
 
 /**
  * The subset of [Category] that travels embedded inside an [Expense]. Kept

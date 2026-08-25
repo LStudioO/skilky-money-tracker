@@ -11,9 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -38,6 +43,7 @@ import com.vstorchevyi.skilky.api.InputType
 import com.vstorchevyi.skilky.domain.model.AppError
 import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.model.ExpenseCategorySnapshot
+import com.vstorchevyi.skilky.domain.model.ExpenseSyncStatus
 import com.vstorchevyi.skilky.ui.input.InputActions
 import com.vstorchevyi.skilky.ui.input.InputEvent
 import com.vstorchevyi.skilky.ui.input.InputUiState
@@ -64,6 +70,7 @@ import kotlin.time.Instant
  * hand-built state.
  */
 @Composable
+@Suppress("LongMethod")
 fun HomeScreen(
     onSignedOut: () -> Unit,
     onOpenCategories: () -> Unit,
@@ -110,6 +117,8 @@ fun HomeScreen(
         onSignOut = viewModel::onSignOut,
         onAddExpense = onAddExpense,
         onOpenExpense = onOpenExpense,
+        onRetryPending = viewModel::onRetryPending,
+        onDeletePending = viewModel::onDeletePending,
         inputActions =
             InputActions(
                 onQueryChange = inputViewModel::onQueryChange,
@@ -176,6 +185,8 @@ internal fun HomeScreenContent(
     onSignOut: () -> Unit,
     onAddExpense: () -> Unit,
     onOpenExpense: (Long) -> Unit,
+    onRetryPending: (Long) -> Unit = {},
+    onDeletePending: (Long) -> Unit = {},
     inputActions: InputActions = InputActions(),
 ) {
     Scaffold(
@@ -206,7 +217,13 @@ internal fun HomeScreenContent(
         bottomBar = { QuickEntryBar(state = inputState, actions = inputActions) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        ExpenseList(state = state, padding = padding, onOpenExpense = onOpenExpense)
+        ExpenseList(
+            state = state,
+            padding = padding,
+            onOpenExpense = onOpenExpense,
+            onRetryPending = onRetryPending,
+            onDeletePending = onDeletePending,
+        )
     }
     if (inputState.previewItems != null) {
         ParsePreviewSheet(state = inputState, actions = inputActions)
@@ -218,6 +235,8 @@ private fun ExpenseList(
     state: HomeUiState,
     padding: PaddingValues,
     onOpenExpense: (Long) -> Unit,
+    onRetryPending: (Long) -> Unit,
+    onDeletePending: (Long) -> Unit,
 ) {
     if (state.groups.isEmpty()) {
         Box(
@@ -235,7 +254,12 @@ private fun ExpenseList(
         state.groups.forEach { group ->
             item(key = "header-${group.date}") { DateHeader(group) }
             items(group.items, key = { it.id }) { expense ->
-                ExpenseRow(expense, onClick = { onOpenExpense(expense.id) })
+                ExpenseRow(
+                    expense = expense,
+                    onClick = { if (!expense.isPending) onOpenExpense(expense.id) },
+                    onRetry = { onRetryPending(expense.id) },
+                    onDeletePending = { onDeletePending(expense.id) },
+                )
             }
             item(key = "divider-${group.date}") { HorizontalDivider() }
         }
@@ -259,20 +283,59 @@ private fun DateHeader(group: ExpenseGroup) {
 private fun ExpenseRow(
     expense: Expense,
     onClick: () -> Unit,
+    onRetry: () -> Unit,
+    onDeletePending: () -> Unit,
 ) {
     ListItem(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = !expense.isPending, onClick = onClick),
         leadingContent = { Text(expense.category.icon) },
         headlineContent = { Text(expense.name) },
-        supportingContent = { Text(expense.category.name) },
+        supportingContent = {
+            Column {
+                Text(expense.category.name)
+                expense.syncStatus.label?.let { label ->
+                    Text(
+                        text = label,
+                        color =
+                            if (expense.syncStatus == ExpenseSyncStatus.FAILED) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.tertiary
+                            },
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        },
         trailingContent = {
-            Text(
-                "${formatMoney(expense.amount)} ${expense.currency.symbol}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    "${formatMoney(expense.amount)} ${expense.currency.symbol}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (expense.syncStatus == ExpenseSyncStatus.FAILED) {
+                    Row {
+                        IconButton(onClick = onRetry) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Retry sync")
+                        }
+                        IconButton(onClick = onDeletePending) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete pending expense")
+                        }
+                    }
+                }
+            }
         },
     )
 }
+
+private val ExpenseSyncStatus.label: String?
+    get() =
+        when (this) {
+            ExpenseSyncStatus.SYNCED -> null
+            ExpenseSyncStatus.PENDING -> "Pending sync"
+            ExpenseSyncStatus.PROCESSING -> "Syncing"
+            ExpenseSyncStatus.FAILED -> "Sync failed"
+        }
 
 private fun AppError.toMessage(): String =
     when (this) {

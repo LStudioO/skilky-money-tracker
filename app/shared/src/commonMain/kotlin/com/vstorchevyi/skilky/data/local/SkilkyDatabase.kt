@@ -11,7 +11,7 @@ import androidx.room.RoomDatabaseConstructor
  * and the SQLite driver when it builds the [SkilkyDatabase] singleton.
  */
 @Database(
-    entities = [CategoryEntity::class, ExpenseEntity::class],
+    entities = [CategoryEntity::class, ExpenseEntity::class, SyncQueueEntity::class],
     version = 1,
     exportSchema = true,
 )
@@ -20,6 +20,8 @@ internal abstract class SkilkyDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
 
     abstract fun expenseDao(): ExpenseDao
+
+    abstract fun syncQueueDao(): SyncQueueDao
 }
 
 /**

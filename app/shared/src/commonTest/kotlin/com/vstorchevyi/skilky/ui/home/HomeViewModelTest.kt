@@ -8,10 +8,12 @@ import com.vstorchevyi.skilky.domain.model.Expense
 import com.vstorchevyi.skilky.domain.model.ExpenseCategorySnapshot
 import com.vstorchevyi.skilky.domain.repository.FakeAuthRepository
 import com.vstorchevyi.skilky.domain.repository.FakeExpenseRepository
+import com.vstorchevyi.skilky.domain.usecase.DeletePendingExpenseUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetCurrentSessionUseCase
 import com.vstorchevyi.skilky.domain.usecase.GetExpensesUseCase
 import com.vstorchevyi.skilky.domain.usecase.LogoutUseCase
 import com.vstorchevyi.skilky.domain.usecase.RefreshExpensesUseCase
+import com.vstorchevyi.skilky.domain.usecase.RetryPendingExpenseUseCase
 import com.vstorchevyi.skilky.support.runTestWithMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -140,6 +142,45 @@ class HomeViewModelTest {
             assertEquals(HomeEvent.ShowError(AppError.Storage), sut.events.first())
         }
 
+    @Test
+    fun `retry pending delegates to repository`() =
+        runTestWithMain {
+            val expenses = FakeExpenseRepository()
+            val sut = createSut(expenses = expenses)
+            advanceUntilIdle()
+
+            sut.onRetryPending(-7)
+            advanceUntilIdle()
+
+            assertTrue(expenses.calls.contains(FakeExpenseRepository.Call.RetryPending(-7)))
+        }
+
+    @Test
+    fun `retry pending failure emits ShowError`() =
+        runTestWithMain {
+            val expenses = FakeExpenseRepository().apply { retryPendingResult = Either.Left(AppError.Network) }
+            val sut = createSut(expenses = expenses)
+            advanceUntilIdle()
+
+            sut.onRetryPending(-7)
+            advanceUntilIdle()
+
+            assertEquals(HomeEvent.ShowError(AppError.Network), sut.events.first())
+        }
+
+    @Test
+    fun `delete pending delegates to repository`() =
+        runTestWithMain {
+            val expenses = FakeExpenseRepository()
+            val sut = createSut(expenses = expenses)
+            advanceUntilIdle()
+
+            sut.onDeletePending(-7)
+            advanceUntilIdle()
+
+            assertTrue(expenses.calls.contains(FakeExpenseRepository.Call.DeletePending(-7)))
+        }
+
     private fun createSut(
         auth: FakeAuthRepository = FakeAuthRepository(),
         expenses: FakeExpenseRepository = FakeExpenseRepository(),
@@ -149,6 +190,8 @@ class HomeViewModelTest {
             logout = LogoutUseCase(auth),
             getExpenses = GetExpensesUseCase(expenses),
             refreshExpenses = RefreshExpensesUseCase(expenses),
+            retryPendingExpense = RetryPendingExpenseUseCase(expenses),
+            deletePendingExpense = DeletePendingExpenseUseCase(expenses),
         )
 
     private fun anExpense(

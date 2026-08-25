@@ -8,9 +8,8 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * Read-and-mutate access to the user's expenses. Reads come straight off the
- * local cache and preserve storage failures in the stream. [refresh] pulls
- * the latest server page into the cache. Mutations go to the server first and
- * the local cache mirrors the result on success.
+ * local cache and preserve storage failures in the stream. [refresh] uploads
+ * queued creates before pulling the latest server page into the cache.
  */
 interface ExpenseRepository {
     fun getExpenses(): Flow<Either<AppError, List<Expense>>>
@@ -23,6 +22,12 @@ interface ExpenseRepository {
     fun getExpense(id: Long): Flow<Either<AppError, Expense?>>
 
     suspend fun refresh(): Either<AppError, Unit>
+
+    suspend fun syncPending(): Either<AppError, Unit>
+
+    suspend fun retryPending(id: Long): Either<AppError, Unit>
+
+    suspend fun deletePending(id: Long): Either<AppError, Unit>
 
     suspend fun create(input: ExpenseInput): Either<AppError, Expense>
 
